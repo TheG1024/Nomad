@@ -1,6 +1,6 @@
-# GPS Tracker Service
+# Nomad
 
-A Spring Boot application that handles real-time GPS data streaming from GPS trackers via WebSocket connections and caches the data using Redis.
+A modern, real-time GPS tracking platform that handles streaming location data with elegance and reliability. Built with Spring Boot and WebSocket technology, Nomad provides seamless real-time tracking capabilities with Redis-powered data persistence.
 
 ## Features
 

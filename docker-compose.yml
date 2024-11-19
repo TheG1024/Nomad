@@ -11,22 +11,22 @@ services:
     depends_on:
       - redis
     networks:
-      - gps-network
+      - nomad-network
 
   redis:
-    image: redis:6.2-alpine
+    image: redis:latest
     ports:
       - "6379:6379"
     command: redis-server --save 60 1 --loglevel warning
     volumes:
       - redis-data:/data
     networks:
-      - gps-network
+      - nomad-network
 
 volumes:
   redis-data:
     driver: local
 
 networks:
-  gps-network:
+  nomad-network:
     driver: bridge

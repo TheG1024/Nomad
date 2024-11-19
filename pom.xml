@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.gpstracker</groupId>
-    <artifactId>gps-tracker-service</artifactId>
+    <artifactId>nomad</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <parent>
@@ -36,6 +36,10 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
 
         <!-- JWT Dependencies -->

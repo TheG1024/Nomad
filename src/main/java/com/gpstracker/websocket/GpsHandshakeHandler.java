@@ -7,34 +7,18 @@ import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
 
 import java.security.Principal;
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 public class GpsHandshakeHandler extends DefaultHandshakeHandler {
-
     @Override
-    protected Principal determineUser(ServerHttpRequest request, 
-                                    WebSocketHandler wsHandler, 
-                                    Map<String, Object> attributes) {
-        // Extract device ID from request headers or query parameters
-        String deviceId = extractDeviceId(request);
-        attributes.put("deviceId", deviceId);
+    protected Principal determineUser(ServerHttpRequest request,
+                                   WebSocketHandler wsHandler,
+                                   Map<String, Object> attributes) {
+        // Generate a unique session ID
+        String sessionId = UUID.randomUUID().toString();
+        attributes.put("sessionId", sessionId);
         
-        return () -> deviceId;
-    }
-
-    private String extractDeviceId(ServerHttpRequest request) {
-        // Try to get device ID from query parameters
-        String deviceId = request.getURI().getQuery();
-        if (deviceId != null && deviceId.startsWith("deviceId=")) {
-            return deviceId.substring("deviceId=".length());
-        }
-        
-        // If not found in query, try headers
-        String deviceHeader = request.getHeaders().getFirst("X-Device-ID");
-        if (deviceHeader != null) {
-            return deviceHeader;
-        }
-        
-        throw new IllegalArgumentException("Device ID not provided");
+        return () -> sessionId;
     }
 }

@@ -69,7 +69,6 @@
 
             try {
                 updateConnectionStatus('Connecting...');
-                // Use relative path to avoid CORS issues
                 ws = new SockJS('/gps');
 
                 ws.onopen = () => {
