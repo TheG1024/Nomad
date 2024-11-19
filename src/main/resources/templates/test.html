@@ -157,7 +157,7 @@
         }
 
         function sendTestData() {
-            if (!ws || ws.readyState !== SockJS.OPEN) {
+            if (!ws) {
                 log('wsLog', 'Not connected to WebSocket', true);
                 return;
             }
@@ -167,7 +167,7 @@
                 latitude: 37.7749,
                 longitude: -122.4194,
                 speed: 30.5,
-                heading: 180,
+                heading: 180.0,
                 timestamp: new Date().toISOString(),
                 additionalInfo: 'Test data'
             };
