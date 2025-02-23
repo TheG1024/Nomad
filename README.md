@@ -43,7 +43,7 @@ The platform utilizes a microservices architecture with the following components
 - 10GB free disk space
 
 ### Option 2: Running Locally
-- Java 11 or higher
+- Java 11
 - Maven 3.6+
 - Redis server running on localhost:6379
 - 4GB RAM minimum
@@ -162,6 +162,9 @@ spring.security.user.password=admin  # Change in production
 
 # Logging
 logging.level.com.gpstracker=DEBUG
+
+# OpenWeatherMap API Key
+openweathermap.api.key=YOUR_API_KEY
 ```
 
 ## Error Handling
@@ -254,8 +257,15 @@ k6 run load-test.js
    - Verify Redis connection
    - Review application logs
    - Check port availability
+   - Verify OpenWeatherMap API key is provided
 
-2. Data Not Streaming
+2. Redis Connection Issues
+   - Verify Redis server is running
+   - Check Redis connection settings in application.properties
+   - Ensure Redis server is accessible from the application
+   - Check Redis server logs for errors
+
+3. Data Not Streaming
    - Verify WebSocket connection
    - Check device authentication
    - Monitor Redis memory
