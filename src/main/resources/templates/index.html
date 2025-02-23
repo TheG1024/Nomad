@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nomad GPS Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <style>
+        #map {
+            height: 500px;
+            width: 100%;
+            border-radius: 8px;
+        }
+        .alert-panel {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .stats-card {
+            transition: transform 0.2s;
+        }
+        .stats-card:hover {
+            transform: translateY(-5px);
+        }
+        .prediction-panel {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .anomaly-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">Nomad GPS Tracker</a>
+            <div class="d-flex">
+                <input type="text" id="deviceId" class="form-control me-2" placeholder="Device ID">
+                <button class="btn btn-outline-light" onclick="connectDevice()">Connect</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <!-- Map -->
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Live Tracking</h5>
+                        <div id="map"></div>
+                    </div>
+                </div>
+
+                <!-- AI Predictions -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Route Predictions</h5>
+                        <div class="prediction-panel" id="predictions"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerts & Anomalies -->
+            <div class="col-lg-4">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Live Alerts & Anomalies</h5>
+                        <div id="alerts" class="alert-panel"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card stats-card text-center mb-4">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">Total Distance</h6>
+                        <h3 id="totalDistance">0 km</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card text-center mb-4">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">Current Speed</h6>
+                        <h3 id="currentSpeed">0 km/h</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card text-center mb-4">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">Battery Level</h6>
+                        <h3 id="batteryLevel">0%</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card text-center mb-4">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">Device Status</h6>
+                        <h3 id="deviceStatus">-</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Geofence Controls -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Geofence Management</h5>
+                <div class="row">
+                    <div class="col-md-3">
+                        <input type="number" id="centerLat" class="form-control mb-2" placeholder="Center Latitude">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="number" id="centerLon" class="form-control mb-2" placeholder="Center Longitude">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="number" id="radius" class="form-control mb-2" placeholder="Radius (km)">
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-primary w-100" onclick="setGeofence()">Set Geofence</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    
+    <script>
+        let map, marker, geofenceCircle;
+        let stompClient = null;
+        let routePolylines = [];
+
+        // Initialize map
+        function initMap() {
+            map = L.map('map').setView([0, 0], 2);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+        }
+
+        // Connect to WebSocket
+        function connectDevice() {
+            const deviceId = document.getElementById('deviceId').value;
+            if (!deviceId) {
+                alert('Please enter a Device ID');
+                return;
+            }
+
+            const socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+
+            stompClient.connect({}, function(frame) {
+                console.log('Connected: ' + frame);
+
+                // Subscribe to device updates
+                stompClient.subscribe('/topic/device/' + deviceId, function(data) {
+                    const gpsData = JSON.parse(data.body);
+                    updateMap(gpsData);
+                    updateStats(gpsData);
+                    checkForAnomalies(deviceId, gpsData);
+                });
+
+                // Subscribe to alerts
+                stompClient.subscribe('/topic/alerts/' + deviceId, function(data) {
+                    displayAlert(JSON.parse(data.body));
+                });
+
+                // Initial route prediction
+                predictRoute(deviceId);
+
+                // Send subscription message
+                stompClient.send("/app/subscribe", {}, deviceId);
+            });
+        }
+
+        // Predict route
+        function predictRoute(deviceId) {
+            const startTime = new Date().toISOString();
+            fetch(`/api/ai/predict/route?deviceId=${deviceId}&startTime=${startTime}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Clear old route lines
+                    routePolylines.forEach(line => map.removeLayer(line));
+                    routePolylines = [];
+
+                    // Display predictions
+                    const predictionsDiv = document.getElementById('predictions');
+                    predictionsDiv.innerHTML = '';
+
+                    data.predictions.forEach((route, index) => {
+                        // Add route to map
+                        const line = L.polyline([
+                            [route.start.lat, route.start.lon],
+                            [route.end.lat, route.end.lon]
+                        ], {
+                            color: getRouteColor(route.probability),
+                            dashArray: '5, 10',
+                            weight: 2
+                        }).addTo(map);
+                        routePolylines.push(line);
+
+                        // Add prediction to panel
+                        const prob = Math.round(route.probability * 100);
+                        predictionsDiv.innerHTML += `
+                            <div class="alert alert-info">
+                                Route ${index + 1}: ${prob}% probability
+                            </div>
+                        `;
+                    });
+                });
+        }
+
+        // Check for anomalies
+        function checkForAnomalies(deviceId, gpsData) {
+            fetch('/api/ai/detect/anomalies?deviceId=' + deviceId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(gpsData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.anomalies && data.anomalies.length > 0) {
+                    data.anomalies.forEach(anomaly => {
+                        displayAnomaly(anomaly);
+                    });
+                }
+            });
+        }
+
+        // Display anomaly
+        function displayAnomaly(anomaly) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+            
+            const severity = Math.round(anomaly.severity * 100);
+            alertDiv.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${anomaly.type}</strong>: ${anomaly.description}
+                    </div>
+                    <span class="badge bg-danger">${severity}%</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.getElementById('alerts').prepend(alertDiv);
+        }
+
+        // Update map with device location
+        function updateMap(data) {
+            const position = [data.latitude, data.longitude];
+            
+            if (!marker) {
+                marker = L.marker(position).addTo(map);
+            } else {
+                marker.setLatLng(position);
+            }
+            
+            map.setView(position, 15);
+
+            // Update route predictions every 5 minutes
+            if (new Date().getMinutes() % 5 === 0) {
+                predictRoute(data.deviceId);
+            }
+        }
+
+        // Update statistics
+        function updateStats(data) {
+            document.getElementById('currentSpeed').textContent = data.speed.toFixed(1) + ' km/h';
+            document.getElementById('batteryLevel').textContent = (data.batteryLevel * 100).toFixed(0) + '%';
+            document.getElementById('deviceStatus').textContent = data.deviceStatus;
+        }
+
+        // Display alert
+        function displayAlert(data) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-warning alert-dismissible fade show';
+            
+            let alertText = 'Alert: ';
+            if (data.lowBattery) alertText += 'Low Battery! ';
+            if (data.speedAlert) alertText += 'Speed Limit Exceeded! ';
+            if (data.geofenceAlert) alertText += 'Geofence Breach! ';
+            if (data.malfunctionAlert) alertText += 'Device Malfunction! ';
+            
+            alertDiv.innerHTML = `
+                ${alertText}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.getElementById('alerts').prepend(alertDiv);
+        }
+
+        // Set geofence
+        function setGeofence() {
+            const deviceId = document.getElementById('deviceId').value;
+            const centerLat = document.getElementById('centerLat').value;
+            const centerLon = document.getElementById('centerLon').value;
+            const radius = document.getElementById('radius').value;
+
+            if (!deviceId || !centerLat || !centerLon || !radius) {
+                alert('Please fill all geofence fields');
+                return;
+            }
+
+            // Update map
+            if (geofenceCircle) {
+                map.removeLayer(geofenceCircle);
+            }
+            geofenceCircle = L.circle([centerLat, centerLon], {
+                radius: radius * 1000,
+                color: 'red',
+                fillColor: '#f03',
+                fillOpacity: 0.2
+            }).addTo(map);
+
+            // Send to server
+            fetch('/api/gps/geofence', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `deviceId=${deviceId}&centerLat=${centerLat}&centerLon=${centerLon}&radius=${radius}`
+            });
+        }
+
+        // Get color based on probability
+        function getRouteColor(probability) {
+            if (probability > 0.7) return '#28a745'; // High probability - green
+            if (probability > 0.4) return '#ffc107'; // Medium probability - yellow
+            return '#dc3545'; // Low probability - red
+        }
+
+        // Initialize
+        initMap();
+    </script>
+</body>
+</html>

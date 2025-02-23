@@ -14,6 +14,8 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -50,19 +52,44 @@ public class GpsWebSocketHandler extends TextWebSocketHandler {
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         try {
-            Map<String, Object> payload = objectMapper.readValue(message.getPayload(), Map.class);
+            String messagePayload = message.getPayload();
+            log.info("Server received: {}", messagePayload);
+
+            // Use HashMap for deserialization
+            HashMap<?, ?> value = objectMapper.readValue(messagePayload, HashMap.class);
+
+            String deviceId = (String) value.get("deviceId");
+            Double latitude = value.containsKey("latitude") ? Double.parseDouble(value.get("latitude").toString()) : null;
+            Double longitude = value.containsKey("longitude") ? Double.parseDouble(value.get("longitude").toString()) : null;
+            Double speed = value.containsKey("speed") ? Double.parseDouble(value.get("speed").toString()) : null;
+            Double heading = value.containsKey("heading") ? Double.parseDouble(value.get("heading").toString()) : null;
+            String timestampString = (String) value.get("timestamp");
+            String additionalInfo = (String) value.get("additionalInfo");
+
+
+            GpsData gpsData = GpsData.builder()
+                    .deviceId(deviceId)
+                    .latitude(latitude != null ? latitude : 0.0) // Default values
+                    .longitude(longitude != null ? longitude : 0.0)
+                    .speed(speed != null ? speed : 0.0)
+                    .heading(heading != null ? heading : 0.0)
+                    .timestamp(LocalDateTime.parse(timestampString))
+                    .additionalInfo(additionalInfo)
+                    .build();
+
+
             String sessionId = session.getId();
             
             // Handle heartbeat messages
-            if (payload.containsKey("type") && "heartbeat".equals(payload.get("type"))) {
+            if (value.containsKey("type") && "heartbeat".equals(value.get("type"))) {
                 handleHeartbeat(session);
                 return;
             }
 
             // Handle device registration if not already registered
             if (!sessionToDeviceId.containsKey(sessionId)) {
-                if (payload.containsKey("deviceId")) {
-                    String deviceId = payload.get("deviceId").toString();
+                if (value.containsKey("deviceId")) {
+                    deviceId = (String) value.get("deviceId");
                     sessionToDeviceId.put(sessionId, deviceId);
                     log.info("Device {} registered with session {}", deviceId, sessionId);
                     sendMessage(session, Map.of(
@@ -77,14 +104,13 @@ public class GpsWebSocketHandler extends TextWebSocketHandler {
                 }
             }
 
-            // Process GPS data
-            GpsData gpsData = objectMapper.convertValue(payload, GpsData.class);
-            String deviceId = sessionToDeviceId.get(sessionId);
-            
-            if (!deviceId.equals(gpsData.getDeviceId())) {
-                sendError(session, "Device ID mismatch");
+            // Verify deviceId from session and message
+            String sessionDeviceId = sessionToDeviceId.get(sessionId);
+            if (sessionDeviceId == null || !sessionDeviceId.equals(gpsData.getDeviceId())) {
+                sendError(session, "Device ID mismatch or session error");
                 return;
             }
+
 
             gpsDataService.saveGpsData(gpsData);
             sendMessage(session, Map.of(
