@@ -97,14 +97,15 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
+                <version>3.8.1</version>
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
-                    <executable>/usr/bin/javac</executable>
                     <compilerArgs>
                         <arg>-parameters</arg>
                     </compilerArgs>
+                    <fork>true</fork>
+                    <executable>/usr/lib/jvm/java-11-openjdk-amd64/bin/javac</executable>
                 </configuration>
             </plugin>
         </plugins>

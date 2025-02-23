@@ -23,7 +23,7 @@ public class FleetSocialService {
     private static final int DATA_RETENTION_DAYS = 7;
 
     @Autowired
-    private RedisTemplate<String, Object> redisTemplate;
+    private RedisTemplate<String, Object> redisTemplateObject;
 
     public void shareStatus(String fleetId, GpsData data, String message) {
         FleetUpdate update = new FleetUpdate(
@@ -35,14 +35,14 @@ public class FleetSocialService {
         );
         
         String key = FLEET_KEY_PREFIX + fleetId;
-        redisTemplate.opsForList().leftPush(key, update);
-        redisTemplate.opsForList().trim(key, 0, 99); // Keep last 100 updates
-        redisTemplate.expire(key, DATA_RETENTION_DAYS, TimeUnit.DAYS);
+        redisTemplateObject.opsForList().leftPush(key, update);
+        redisTemplateObject.opsForList().trim(key, 0, 99); // Keep last 100 updates
+        redisTemplateObject.expire(key, DATA_RETENTION_DAYS, TimeUnit.DAYS);
     }
 
     public List<FleetUpdate> getFleetUpdates(String fleetId) {
         String key = FLEET_KEY_PREFIX + fleetId;
-        return Optional.ofNullable(redisTemplate.opsForList().range(key, 0, -1))
+        return Optional.ofNullable(redisTemplateObject.opsForList().range(key, 0, -1))
                       .orElse(Collections.emptyList())
                       .stream()
                       .map(obj -> (FleetUpdate) obj)
@@ -70,27 +70,27 @@ public class FleetSocialService {
         );
         
         String key = ECO_SCORE_KEY_PREFIX + deviceId;
-        redisTemplate.opsForValue().set(key, ecoScore);
-        redisTemplate.expire(key, DATA_RETENTION_DAYS, TimeUnit.DAYS);
+        redisTemplateObject.opsForValue().set(key, ecoScore);
+        redisTemplateObject.expire(key, DATA_RETENTION_DAYS, TimeUnit.DAYS);
         
         return ecoScore;
     }
 
     public void updateLeaderboard(String fleetId, String deviceId, double score) {
         String key = LEADERBOARD_KEY_PREFIX + fleetId;
-        redisTemplate.opsForZSet().add(key, deviceId, score);
-        redisTemplate.expire(key, DATA_RETENTION_DAYS, TimeUnit.DAYS);
+        redisTemplateObject.opsForZSet().add(key, deviceId, score);
+        redisTemplateObject.expire(key, DATA_RETENTION_DAYS, TimeUnit.DAYS);
     }
 
     public List<LeaderboardEntry> getLeaderboard(String fleetId) {
         String key = LEADERBOARD_KEY_PREFIX + fleetId;
-        Set<Object> topDrivers = redisTemplate.opsForZSet().reverseRange(key, 0, 9);
+        Set<Object> topDrivers = redisTemplateObject.opsForZSet().reverseRange(key, 0, 9);
         
         List<LeaderboardEntry> entries = new ArrayList<>();
         if (topDrivers != null) {
             int rank = 1;
             for (Object deviceId : topDrivers) {
-                Double score = redisTemplate.opsForZSet().score(key, deviceId);
+                Double score = redisTemplateObject.opsForZSet().score(key, deviceId);
                 entries.add(new LeaderboardEntry(
                     rank++,
                     (String) deviceId,
@@ -103,7 +103,7 @@ public class FleetSocialService {
 
     public List<Achievement> getAchievements(String deviceId) {
         String key = ACHIEVEMENT_KEY_PREFIX + deviceId;
-        return Optional.ofNullable(redisTemplate.opsForSet().members(key))
+        return Optional.ofNullable(redisTemplateObject.opsForSet().members(key))
                       .orElse(Collections.emptySet())
                       .stream()
                       .map(obj -> (Achievement) obj)
