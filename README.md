@@ -32,6 +32,7 @@ The platform utilizes a microservices architecture with the following components
 - Configurable data retention policies
 - Batch export capabilities
 - Real-time data validation
+- Latest device snapshot and device discovery endpoints
 - Error handling and retry mechanisms
 
 ## Prerequisites
@@ -122,7 +123,18 @@ mvn spring-boot:run
   - deviceId (required): Device identifier
   - startTime (required): Start timestamp (ISO-8601)
   - endTime (required): End timestamp (ISO-8601)
-  - format (optional): "csv" or "json" (default: "csv")
+
+#### Latest Device Data
+- Method: GET
+- URL: `/api/gps/latest`
+- Auth: Basic Authentication
+- Parameters:
+  - deviceId (required): Device identifier
+
+#### Known Devices
+- Method: GET
+- URL: `/api/gps/devices`
+- Auth: Basic Authentication
 
 ## Security
 
@@ -220,7 +232,7 @@ Common errors and solutions:
 2. Create a feature branch
 3. Implement changes
 4. Add tests
-5. Submit pull request
+5. Submit a pull request
 6. Follow coding standards:
    - Use Java code style
    - Write documentation

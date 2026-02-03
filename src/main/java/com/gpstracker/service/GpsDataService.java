@@ -3,6 +3,7 @@ package com.gpstracker.service;
 import com.gpstracker.model.GpsData;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ public class GpsDataService {
     private static final String GEOFENCE_KEY_PREFIX = "gps:geofence:";
     private static final String ALERT_KEY_PREFIX = "gps:alert:";
     private static final String STATS_KEY_PREFIX = "gps:stats:";
+    private static final String DEVICE_SET_KEY = "gps:devices";
     private static final int DATA_RETENTION_DAYS = 7;
     
     private static final double BATTERY_ALERT_THRESHOLD = 0.2; // 20%
@@ -29,9 +31,18 @@ public class GpsDataService {
     private static final int OFFLINE_THRESHOLD_MINUTES = 5;
 
     @Autowired
+    @Qualifier("redisTemplate")
     private RedisTemplate<String, GpsData> redisTemplate;
 
+    @Autowired
+    @Qualifier("redisTemplateObject")
+    private RedisTemplate<String, Object> objectRedisTemplate;
+
     public void saveGpsData(GpsData gpsData) {
+        LocalDateTime timestamp = Optional.ofNullable(gpsData.getTimestamp())
+            .orElse(LocalDateTime.now());
+        gpsData.setTimestamp(timestamp);
+
         // Update device status
         updateDeviceStatus(gpsData);
         
@@ -42,14 +53,20 @@ public class GpsDataService {
         checkGeofence(gpsData);
         
         // Save data
-        String key = GPS_DATA_KEY_PREFIX + gpsData.getDeviceId() + ":" + 
-                    LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        String key = GPS_DATA_KEY_PREFIX + gpsData.getDeviceId() + ":" +
+                    timestamp.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         
         redisTemplate.opsForValue().set(key, gpsData);
         redisTemplate.expire(key, DATA_RETENTION_DAYS, TimeUnit.DAYS);
+        objectRedisTemplate.opsForSet().add(DEVICE_SET_KEY, gpsData.getDeviceId());
         
         // Update statistics
         updateStatistics(gpsData);
+
+        // Store last known data
+        String lastDataKey = getLastDataKey(gpsData.getDeviceId());
+        redisTemplate.opsForValue().set(lastDataKey, gpsData);
+        redisTemplate.expire(lastDataKey, DATA_RETENTION_DAYS, TimeUnit.DAYS);
     }
 
     private void updateDeviceStatus(GpsData gpsData) {
@@ -59,7 +76,7 @@ public class GpsDataService {
         
         if (lastData != null) {
             Duration timeSinceLastUpdate = Duration.between(lastData.getTimestamp(), gpsData.getTimestamp());
-            
+
             if (timeSinceLastUpdate.toMinutes() > OFFLINE_THRESHOLD_MINUTES) {
                 gpsData.setDeviceStatus("OFFLINE");
             } else if (gpsData.getSpeed() < 1.0) {
@@ -67,6 +84,13 @@ public class GpsDataService {
             } else {
                 gpsData.setDeviceStatus("ACTIVE");
             }
+            return;
+        }
+
+        if (gpsData.getSpeed() < 1.0) {
+            gpsData.setDeviceStatus("IDLE");
+        } else {
+            gpsData.setDeviceStatus("ACTIVE");
         }
     }
 
@@ -155,7 +179,7 @@ public class GpsDataService {
         return GPS_DATA_KEY_PREFIX + deviceId + ":last";
     }
 
-    public Map<String, Object> getDeviceStatistics(String deviceId, LocalDateTime date) {
+    public Map<String, Object> getDeviceStatistics(String deviceId, java.time.LocalDate date) {
         String statsKey = STATS_KEY_PREFIX + deviceId + ":" + date.format(DateTimeFormatter.ISO_LOCAL_DATE);
         Map<Object, Object> rawData = redisTemplate.opsForHash().entries(statsKey);
         
@@ -168,15 +192,21 @@ public class GpsDataService {
     public List<GpsData> getGpsDataForDevice(String deviceId, LocalDateTime startTime, LocalDateTime endTime) {
         String keyPattern = GPS_DATA_KEY_PREFIX + deviceId + ":*";
         Set<String> keys = redisTemplate.keys(keyPattern);
-        
+        if (keys == null || keys.isEmpty()) {
+            return Collections.emptyList();
+        }
+
         return keys.stream()
-                  .map(key -> redisTemplate.opsForValue().get(key))
-                  .filter(data -> {
-                      LocalDateTime timestamp = data.getTimestamp();
-                      return timestamp.isAfter(startTime) && timestamp.isBefore(endTime);
-                  })
-                  .sorted(Comparator.comparing(GpsData::getTimestamp))
-                  .collect(Collectors.toList());
+                .map(key -> redisTemplate.opsForValue().get(key))
+                .filter(Objects::nonNull)
+                .filter(data -> {
+                    LocalDateTime timestamp = data.getTimestamp();
+                    return timestamp != null
+                        && !timestamp.isBefore(startTime)
+                        && !timestamp.isAfter(endTime);
+                })
+                .sorted(Comparator.comparing(GpsData::getTimestamp))
+                .collect(Collectors.toList());
     }
 
     public List<GpsData> getAlerts(String deviceId, LocalDateTime startTime, LocalDateTime endTime) {
@@ -184,9 +214,12 @@ public class GpsDataService {
         return Optional.ofNullable(redisTemplate.opsForList().range(alertKey, 0, -1))
                 .orElse(Collections.emptyList())
                 .stream()
+                .filter(Objects::nonNull)
                 .filter(data -> {
                     LocalDateTime timestamp = data.getTimestamp();
-                    return timestamp.isAfter(startTime) && timestamp.isBefore(endTime);
+                    return timestamp != null
+                        && !timestamp.isBefore(startTime)
+                        && !timestamp.isAfter(endTime);
                 })
                 .collect(Collectors.toList());
     }
@@ -199,6 +232,21 @@ public class GpsDataService {
         geofence.put("radius", radius);
         
         redisTemplate.opsForHash().putAll(geofenceKey, geofence);
+    }
+
+    public Optional<GpsData> getLatestGpsData(String deviceId) {
+        return Optional.ofNullable(redisTemplate.opsForValue().get(getLastDataKey(deviceId)));
+    }
+
+    public List<String> getKnownDeviceIds() {
+        Set<Object> members = objectRedisTemplate.opsForSet().members(DEVICE_SET_KEY);
+        if (members == null || members.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return members.stream()
+            .map(Object::toString)
+            .sorted()
+            .collect(Collectors.toList());
     }
 
     @Scheduled(cron = "0 0 0 * * 0") // Run at midnight every Sunday

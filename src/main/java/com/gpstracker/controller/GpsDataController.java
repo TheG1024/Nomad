@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -39,13 +40,16 @@ public class GpsDataController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime) {
         
         try {
+            if (startTime.isAfter(endTime)) {
+                return ResponseEntity.badRequest().build();
+            }
             String fileName = exportService.exportToCsv(deviceId, startTime, endTime);
             Path path = Paths.get(fileName);
             Resource resource = new UrlResource(path.toUri());
 
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType("text/csv"))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + path.getFileName() + "\"")
                     .body(resource);
         } catch (IOException e) {
             log.error("Error exporting GPS data: ", e);
@@ -60,6 +64,9 @@ public class GpsDataController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime) {
         
         try {
+            if (startTime.isAfter(endTime)) {
+                return ResponseEntity.badRequest().build();
+            }
             List<GpsData> data = gpsDataService.getGpsDataForDevice(deviceId, startTime, endTime);
             return ResponseEntity.ok(data);
         } catch (Exception e) {
@@ -75,6 +82,9 @@ public class GpsDataController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime) {
         
         try {
+            if (startTime.isAfter(endTime)) {
+                return ResponseEntity.badRequest().build();
+            }
             List<GpsData> alerts = gpsDataService.getAlerts(deviceId, startTime, endTime);
             return ResponseEntity.ok(alerts);
         } catch (Exception e) {
@@ -86,7 +96,7 @@ public class GpsDataController {
     @GetMapping("/statistics")
     public ResponseEntity<Map<String, Object>> getStatistics(
             @RequestParam String deviceId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDateTime date) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         
         try {
             Map<String, Object> stats = gpsDataService.getDeviceStatistics(deviceId, date);
@@ -120,6 +130,28 @@ public class GpsDataController {
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             log.error("Error saving GPS data: ", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/latest")
+    public ResponseEntity<GpsData> getLatestGpsData(@RequestParam String deviceId) {
+        try {
+            return gpsDataService.getLatestGpsData(deviceId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            log.error("Error retrieving latest GPS data: ", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/devices")
+    public ResponseEntity<List<String>> getKnownDevices() {
+        try {
+            return ResponseEntity.ok(gpsDataService.getKnownDeviceIds());
+        } catch (Exception e) {
+            log.error("Error retrieving device list: ", e);
             return ResponseEntity.internalServerError().build();
         }
     }
