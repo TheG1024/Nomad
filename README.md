@@ -15,7 +15,7 @@ graph TD
     Consumer -->|API| REST[REST API]
 ```
 
-The platform utilizes a microservices architecture with the following components:
+The platform utilizes a microservice architecture with the following components:
 - WebSocket server for real-time data streaming
 - Redis for high-performance data caching and persistence
 - Spring Security for authentication and authorization
@@ -108,7 +108,7 @@ mvn spring-boot:run
 ### WebSocket Endpoints
 
 #### GPS Data Stream
-- URL: `ws://localhost:8080/gps`
+- URL: `ws://localhost:8080/ws`
 - Authentication: Device ID (query param or header)
 - Message Format: JSON
 
@@ -122,7 +122,13 @@ mvn spring-boot:run
   - deviceId (required): Device identifier
   - startTime (required): Start timestamp (ISO-8601)
   - endTime (required): End timestamp (ISO-8601)
-  - format (optional): "csv" or "json" (default: "csv")
+
+#### Latest GPS Data
+- Method: GET
+- URL: `/api/gps/latest`
+- Auth: Basic Authentication
+- Parameters:
+  - deviceId (required): Device identifier
 
 ## Security
 
@@ -232,7 +238,7 @@ Common errors and solutions:
 ### WebSocket Testing
 ```bash
 # Install websocat
-websocat ws://localhost:8080/gps?deviceId=device123
+websocat ws://localhost:8080/ws?deviceId=device123
 
 # Send test data
 {"deviceId":"device123","latitude":37.7749,"longitude":-122.4194,"speed":30.5,"heading":180.0,"timestamp":"2023-12-25T10:30:00","additionalInfo":"Test data"}

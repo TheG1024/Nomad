@@ -83,6 +83,18 @@ public class GpsDataController {
         }
     }
 
+    @GetMapping("/latest")
+    public ResponseEntity<GpsData> getLatestGpsData(@RequestParam String deviceId) {
+        try {
+            return gpsDataService.getLatestGpsData(deviceId)
+                    .map(ResponseEntity::ok)
+                    .orElseGet(() -> ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            log.error("Error retrieving latest GPS data: ", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     @GetMapping("/statistics")
     public ResponseEntity<Map<String, Object>> getStatistics(
             @RequestParam String deviceId,

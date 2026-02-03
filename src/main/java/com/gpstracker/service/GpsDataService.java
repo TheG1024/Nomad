@@ -50,6 +50,11 @@ public class GpsDataService {
         
         // Update statistics
         updateStatistics(gpsData);
+
+        // Store last known data for quick lookup
+        String lastDataKey = getLastDataKey(gpsData.getDeviceId());
+        redisTemplate.opsForValue().set(lastDataKey, gpsData);
+        redisTemplate.expire(lastDataKey, DATA_RETENTION_DAYS, TimeUnit.DAYS);
     }
 
     private void updateDeviceStatus(GpsData gpsData) {
@@ -67,6 +72,10 @@ public class GpsDataService {
             } else {
                 gpsData.setDeviceStatus("ACTIVE");
             }
+        } else if (gpsData.getSpeed() < 1.0) {
+            gpsData.setDeviceStatus("IDLE");
+        } else {
+            gpsData.setDeviceStatus("ACTIVE");
         }
     }
 
@@ -130,7 +139,7 @@ public class GpsDataService {
             (gpsData.isLowBattery() || gpsData.isSpeedAlert() || gpsData.isGeofenceAlert()) ? 1 : 0);
         
         // Update max speed
-        Double currentMaxSpeed = (Double) redisTemplate.opsForHash().get(statsKey, "maxSpeed");
+        Double currentMaxSpeed = asDouble(redisTemplate.opsForHash().get(statsKey, "maxSpeed"));
         if (currentMaxSpeed == null || gpsData.getSpeed() > currentMaxSpeed) {
             redisTemplate.opsForHash().put(statsKey, "maxSpeed", gpsData.getSpeed());
         }
@@ -151,6 +160,21 @@ public class GpsDataService {
         return 0.0;
     }
 
+    private Double asDouble(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        try {
+            return Double.parseDouble(value.toString());
+        } catch (NumberFormatException ex) {
+            log.warn("Unable to parse {} as double", value, ex);
+            return null;
+        }
+    }
+
     private String getLastDataKey(String deviceId) {
         return GPS_DATA_KEY_PREFIX + deviceId + ":last";
     }
@@ -168,15 +192,19 @@ public class GpsDataService {
     public List<GpsData> getGpsDataForDevice(String deviceId, LocalDateTime startTime, LocalDateTime endTime) {
         String keyPattern = GPS_DATA_KEY_PREFIX + deviceId + ":*";
         Set<String> keys = redisTemplate.keys(keyPattern);
-        
+        if (keys == null || keys.isEmpty()) {
+            return Collections.emptyList();
+        }
+
         return keys.stream()
-                  .map(key -> redisTemplate.opsForValue().get(key))
-                  .filter(data -> {
-                      LocalDateTime timestamp = data.getTimestamp();
-                      return timestamp.isAfter(startTime) && timestamp.isBefore(endTime);
-                  })
-                  .sorted(Comparator.comparing(GpsData::getTimestamp))
-                  .collect(Collectors.toList());
+                .map(key -> redisTemplate.opsForValue().get(key))
+                .filter(Objects::nonNull)
+                .filter(data -> {
+                    LocalDateTime timestamp = data.getTimestamp();
+                    return timestamp != null && timestamp.isAfter(startTime) && timestamp.isBefore(endTime);
+                })
+                .sorted(Comparator.comparing(GpsData::getTimestamp))
+                .collect(Collectors.toList());
     }
 
     public List<GpsData> getAlerts(String deviceId, LocalDateTime startTime, LocalDateTime endTime) {
@@ -184,11 +212,17 @@ public class GpsDataService {
         return Optional.ofNullable(redisTemplate.opsForList().range(alertKey, 0, -1))
                 .orElse(Collections.emptyList())
                 .stream()
+                .filter(Objects::nonNull)
                 .filter(data -> {
                     LocalDateTime timestamp = data.getTimestamp();
-                    return timestamp.isAfter(startTime) && timestamp.isBefore(endTime);
+                    return timestamp != null && timestamp.isAfter(startTime) && timestamp.isBefore(endTime);
                 })
                 .collect(Collectors.toList());
+    }
+
+    public Optional<GpsData> getLatestGpsData(String deviceId) {
+        String lastDataKey = getLastDataKey(deviceId);
+        return Optional.ofNullable(redisTemplate.opsForValue().get(lastDataKey));
     }
 
     public void setGeofence(String deviceId, double centerLat, double centerLon, double radius) {
