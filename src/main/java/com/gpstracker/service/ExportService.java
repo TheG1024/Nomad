@@ -97,9 +97,12 @@ public class ExportService {
 
             // Write data rows
             for (GpsData gpsData : data) {
+                String timestamp = gpsData.getTimestamp() != null
+                    ? gpsData.getTimestamp().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                    : "";
                 writer.write(String.format("%s,%s,%f,%f,%f,%f,%f,%s,%f,%s,%d\n",
                     gpsData.getDeviceId(),
-                    gpsData.getTimestamp(),
+                    timestamp,
                     gpsData.getLatitude(),
                     gpsData.getLongitude(),
                     gpsData.getSpeed(),

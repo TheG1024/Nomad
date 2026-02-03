@@ -58,26 +58,6 @@ public class GpsWebSocketHandler extends TextWebSocketHandler {
             // Use HashMap for deserialization
             HashMap<?, ?> value = objectMapper.readValue(messagePayload, HashMap.class);
 
-            String deviceId = (String) value.get("deviceId");
-            Double latitude = value.containsKey("latitude") ? Double.parseDouble(value.get("latitude").toString()) : null;
-            Double longitude = value.containsKey("longitude") ? Double.parseDouble(value.get("longitude").toString()) : null;
-            Double speed = value.containsKey("speed") ? Double.parseDouble(value.get("speed").toString()) : null;
-            Double heading = value.containsKey("heading") ? Double.parseDouble(value.get("heading").toString()) : null;
-            String timestampString = (String) value.get("timestamp");
-            String additionalInfo = (String) value.get("additionalInfo");
-
-
-            GpsData gpsData = GpsData.builder()
-                    .deviceId(deviceId)
-                    .latitude(latitude != null ? latitude : 0.0) // Default values
-                    .longitude(longitude != null ? longitude : 0.0)
-                    .speed(speed != null ? speed : 0.0)
-                    .heading(heading != null ? heading : 0.0)
-                    .timestamp(LocalDateTime.parse(timestampString))
-                    .additionalInfo(additionalInfo)
-                    .build();
-
-
             String sessionId = session.getId();
             
             // Handle heartbeat messages
@@ -89,7 +69,7 @@ public class GpsWebSocketHandler extends TextWebSocketHandler {
             // Handle device registration if not already registered
             if (!sessionToDeviceId.containsKey(sessionId)) {
                 if (value.containsKey("deviceId")) {
-                    deviceId = (String) value.get("deviceId");
+                    String deviceId = (String) value.get("deviceId");
                     sessionToDeviceId.put(sessionId, deviceId);
                     log.info("Device {} registered with session {}", deviceId, sessionId);
                     sendMessage(session, Map.of(
@@ -103,6 +83,35 @@ public class GpsWebSocketHandler extends TextWebSocketHandler {
                     return;
                 }
             }
+
+            String deviceId = (String) value.get("deviceId");
+            if (deviceId == null || deviceId.isBlank()) {
+                sendError(session, "Device ID is required");
+                return;
+            }
+
+            Double latitude = value.containsKey("latitude") ? Double.parseDouble(value.get("latitude").toString()) : null;
+            Double longitude = value.containsKey("longitude") ? Double.parseDouble(value.get("longitude").toString()) : null;
+            Double speed = value.containsKey("speed") ? Double.parseDouble(value.get("speed").toString()) : null;
+            Double heading = value.containsKey("heading") ? Double.parseDouble(value.get("heading").toString()) : null;
+            String timestampString = (String) value.get("timestamp");
+            String additionalInfo = (String) value.get("additionalInfo");
+
+            LocalDateTime timestamp = parseTimestamp(timestampString);
+            if (timestamp == null) {
+                sendError(session, "Timestamp is required and must be ISO-8601 compatible");
+                return;
+            }
+
+            GpsData gpsData = GpsData.builder()
+                    .deviceId(deviceId)
+                    .latitude(latitude != null ? latitude : 0.0) // Default values
+                    .longitude(longitude != null ? longitude : 0.0)
+                    .speed(speed != null ? speed : 0.0)
+                    .heading(heading != null ? heading : 0.0)
+                    .timestamp(timestamp)
+                    .additionalInfo(additionalInfo)
+                    .build();
 
             // Verify deviceId from session and message
             String sessionDeviceId = sessionToDeviceId.get(sessionId);
@@ -124,6 +133,22 @@ public class GpsWebSocketHandler extends TextWebSocketHandler {
         } catch (Exception e) {
             log.error("Error processing message: ", e);
             sendError(session, "Error processing message: " + e.getMessage());
+        }
+    }
+
+    private LocalDateTime parseTimestamp(String timestampString) {
+        if (timestampString == null || timestampString.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(timestampString);
+        } catch (Exception e) {
+            try {
+                return java.time.OffsetDateTime.parse(timestampString)
+                    .toLocalDateTime();
+            } catch (Exception ignored) {
+                return null;
+            }
         }
     }
 
