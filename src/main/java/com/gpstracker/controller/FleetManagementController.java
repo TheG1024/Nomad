@@ -5,7 +5,6 @@ import com.gpstracker.service.social.FleetSocialService;
 import com.gpstracker.model.GpsData;
 import com.gpstracker.model.fleet.*;
 import com.gpstracker.model.fleet.social.FleetSocialData;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -13,12 +12,14 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@Slf4j
 @RestController
 @RequestMapping("/api/fleet")
 @CrossOrigin(origins = "*")
 public class FleetManagementController {
+    private static final Logger log = LoggerFactory.getLogger(FleetManagementController.class);
 
     @Autowired
     private SmartSchedulingService schedulingService;

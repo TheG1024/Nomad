@@ -1,18 +1,19 @@
 package com.gpstracker.service.weather;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Slf4j
 @Service
 public class WeatherAwareRoutingService {
+    private static final Logger log = LoggerFactory.getLogger(WeatherAwareRoutingService.class);
 
     @Value("${openweathermap.api.key}")
     private String apiKey;
@@ -294,35 +295,103 @@ public class WeatherAwareRoutingService {
     }
 
     // Data classes
-    @lombok.Data
     public static class WeatherAwareRoute {
         private final List<RoutePoint> route;
         private final List<WeatherPoint> weatherPoints;
         private final double riskScore;
         private final List<String> advisories;
+
+        public WeatherAwareRoute(List<RoutePoint> route, List<WeatherPoint> weatherPoints, double riskScore,
+                                 List<String> advisories) {
+            this.route = route;
+            this.weatherPoints = weatherPoints;
+            this.riskScore = riskScore;
+            this.advisories = advisories;
+        }
+
+        public List<RoutePoint> getRoute() {
+            return route;
+        }
+
+        public List<WeatherPoint> getWeatherPoints() {
+            return weatherPoints;
+        }
+
+        public double getRiskScore() {
+            return riskScore;
+        }
+
+        public List<String> getAdvisories() {
+            return advisories;
+        }
     }
 
-    @lombok.Data
     public static class RoutePoint {
         private final double lat;
         private final double lon;
+
+        public RoutePoint(double lat, double lon) {
+            this.lat = lat;
+            this.lon = lon;
+        }
+
+        public double getLat() {
+            return lat;
+        }
+
+        public double getLon() {
+            return lon;
+        }
     }
 
-    @lombok.Data
     public static class WeatherPoint {
         private final double lat;
         private final double lon;
         private final WeatherCondition condition;
         private final double severity;
+
+        public WeatherPoint(double lat, double lon, WeatherCondition condition, double severity) {
+            this.lat = lat;
+            this.lon = lon;
+            this.condition = condition;
+            this.severity = severity;
+        }
+
+        public double getLat() {
+            return lat;
+        }
+
+        public double getLon() {
+            return lon;
+        }
+
+        public WeatherCondition getCondition() {
+            return condition;
+        }
+
+        public double getSeverity() {
+            return severity;
+        }
     }
 
-    @lombok.Data
     public static class WeatherCache {
         private final WeatherForecast forecast;
         private final LocalDateTime timestamp;
+
+        public WeatherCache(WeatherForecast forecast, LocalDateTime timestamp) {
+            this.forecast = forecast;
+            this.timestamp = timestamp;
+        }
+
+        public WeatherForecast getForecast() {
+            return forecast;
+        }
+
+        public LocalDateTime getTimestamp() {
+            return timestamp;
+        }
     }
 
-    @lombok.Data
     public static class WeatherForecast {
         // This would match the OpenWeatherMap API response structure
         // Implementation details would depend on the actual API response

@@ -1,11 +1,12 @@
 package com.gpstracker.service;
 
 import com.gpstracker.model.GpsData;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.time.Duration;
@@ -14,9 +15,9 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-@Slf4j
 @Service
 public class GpsDataService {
+    private static final Logger log = LoggerFactory.getLogger(GpsDataService.class);
 
     private static final String GPS_DATA_KEY_PREFIX = "gps:data:";
     private static final String GEOFENCE_KEY_PREFIX = "gps:geofence:";

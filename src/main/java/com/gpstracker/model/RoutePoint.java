@@ -1,12 +1,12 @@
-package com.gpstracker.model.fleet;
+package com.gpstracker.model;
 
-public class Location {
+public class RoutePoint {
     private double lat;
     private double lon;
 
-    public Location() {}
+    public RoutePoint() {}
 
-    public Location(double lat, double lon) {
+    public RoutePoint(double lat, double lon) {
         this.lat = lat;
         this.lon = lon;
     }
