@@ -104,8 +104,6 @@
                     <compilerArgs>
                         <arg>-parameters</arg>
                     </compilerArgs>
-                    <fork>true</fork>
-                    <executable>/usr/lib/jvm/java-11-openjdk-amd64/bin/javac</executable>
                 </configuration>
             </plugin>
         </plugins>

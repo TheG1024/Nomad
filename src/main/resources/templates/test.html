@@ -69,7 +69,7 @@
 
             try {
                 updateConnectionStatus('Connecting...');
-                ws = new SockJS('/gps');
+                ws = new SockJS('/ws');
 
                 ws.onopen = () => {
                     reconnectAttempt = 0;
