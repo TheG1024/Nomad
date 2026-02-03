@@ -48,13 +48,6 @@
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
 
-        <!-- Lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <optional>true</optional>
-        </dependency>
-
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -104,8 +97,6 @@
                     <compilerArgs>
                         <arg>-parameters</arg>
                     </compilerArgs>
-                    <fork>true</fork>
-                    <executable>/usr/lib/jvm/java-11-openjdk-amd64/bin/javac</executable>
                 </configuration>
             </plugin>
         </plugins>
