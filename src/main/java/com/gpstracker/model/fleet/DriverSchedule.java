@@ -1,16 +1,14 @@
 package com.gpstracker.model.fleet;
 
-import lombok.Data;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Data
 public class DriverSchedule {
-    private final String driverId;
-    private final List<Shift> shifts;
-    private final Duration maxDailyDuration;
-    
+    private String driverId;
+    private List<Shift> shifts;
+    private Duration maxDailyDuration;
+
     public double calculateFatigueScore(LocalDateTime time) {
         // Calculate fatigue based on recent shifts
         double fatigue = 0.0;
@@ -26,10 +24,57 @@ public class DriverSchedule {
         return fatigue;
     }
 
-    @Data
     public static class Shift {
-        private final LocalDateTime startTime;
-        private final LocalDateTime endTime;
-        private final Duration duration;
+        private LocalDateTime startTime;
+        private LocalDateTime endTime;
+        private Duration duration;
+
+        public LocalDateTime getStartTime() {
+            return startTime;
+        }
+
+        public void setStartTime(LocalDateTime startTime) {
+            this.startTime = startTime;
+        }
+
+        public LocalDateTime getEndTime() {
+            return endTime;
+        }
+
+        public void setEndTime(LocalDateTime endTime) {
+            this.endTime = endTime;
+        }
+
+        public Duration getDuration() {
+            return duration;
+        }
+
+        public void setDuration(Duration duration) {
+            this.duration = duration;
+        }
+    }
+
+    public String getDriverId() {
+        return driverId;
+    }
+
+    public void setDriverId(String driverId) {
+        this.driverId = driverId;
+    }
+
+    public List<Shift> getShifts() {
+        return shifts;
+    }
+
+    public void setShifts(List<Shift> shifts) {
+        this.shifts = shifts;
+    }
+
+    public Duration getMaxDailyDuration() {
+        return maxDailyDuration;
+    }
+
+    public void setMaxDailyDuration(Duration maxDailyDuration) {
+        this.maxDailyDuration = maxDailyDuration;
     }
 }

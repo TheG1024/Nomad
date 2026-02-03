@@ -1,18 +1,19 @@
 package com.gpstracker.service.ai;
 
 import com.gpstracker.model.GpsData;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.*;
 import java.time.temporal.ChronoUnit;
 
-@Slf4j
 @Service
 public class PredictionService {
+    private static final Logger log = LoggerFactory.getLogger(PredictionService.class);
     
     @Autowired
     private com.gpstracker.service.GpsDataService gpsDataService;
@@ -136,53 +137,182 @@ public class PredictionService {
 
     // Helper classes and methods
 
-    @lombok.Data
     public static class PredictedRoute {
         private final double startLat;
         private final double startLon;
         private final double endLat;
         private final double endLon;
         private final double probability;
+
+        public PredictedRoute(double startLat, double startLon, double endLat, double endLon, double probability) {
+            this.startLat = startLat;
+            this.startLon = startLon;
+            this.endLat = endLat;
+            this.endLon = endLon;
+            this.probability = probability;
+        }
+
+        public double getStartLat() {
+            return startLat;
+        }
+
+        public double getStartLon() {
+            return startLon;
+        }
+
+        public double getEndLat() {
+            return endLat;
+        }
+
+        public double getEndLon() {
+            return endLon;
+        }
+
+        public double getProbability() {
+            return probability;
+        }
     }
 
-    @lombok.Data
     public static class Anomaly {
         private final AnomalyType type;
         private final String description;
         private final double severity;
+
+        public Anomaly(AnomalyType type, String description, double severity) {
+            this.type = type;
+            this.description = description;
+            this.severity = severity;
+        }
+
+        public AnomalyType getType() {
+            return type;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public double getSeverity() {
+            return severity;
+        }
     }
 
     public enum AnomalyType {
         SPEED, ROUTE, TIMING, BEHAVIOR
     }
 
-    @lombok.Data
     private static class MovementPattern {
         private double averageSpeed;
         private List<Location> commonLocations;
         private Map<Integer, TimeRange> activeHours; // Hour -> TimeRange
         private double maxDeviation;
+
+        public double getAverageSpeed() {
+            return averageSpeed;
+        }
+
+        public void setAverageSpeed(double averageSpeed) {
+            this.averageSpeed = averageSpeed;
+        }
+
+        public List<Location> getCommonLocations() {
+            return commonLocations;
+        }
+
+        public void setCommonLocations(List<Location> commonLocations) {
+            this.commonLocations = commonLocations;
+        }
+
+        public Map<Integer, TimeRange> getActiveHours() {
+            return activeHours;
+        }
+
+        public void setActiveHours(Map<Integer, TimeRange> activeHours) {
+            this.activeHours = activeHours;
+        }
+
+        public double getMaxDeviation() {
+            return maxDeviation;
+        }
+
+        public void setMaxDeviation(double maxDeviation) {
+            this.maxDeviation = maxDeviation;
+        }
     }
 
-    @lombok.Data
     private static class Location {
         private final double latitude;
         private final double longitude;
         private int frequency;
+
+        private Location(double latitude, double longitude) {
+            this.latitude = latitude;
+            this.longitude = longitude;
+        }
+
+        public double getLatitude() {
+            return latitude;
+        }
+
+        public double getLongitude() {
+            return longitude;
+        }
+
+        public int getFrequency() {
+            return frequency;
+        }
+
+        public void setFrequency(int frequency) {
+            this.frequency = frequency;
+        }
     }
 
-    @lombok.Data
     private static class TimeRange {
         private final LocalDateTime start;
         private final LocalDateTime end;
+
+        private TimeRange(LocalDateTime start, LocalDateTime end) {
+            this.start = start;
+            this.end = end;
+        }
+
+        public LocalDateTime getStart() {
+            return start;
+        }
+
+        public LocalDateTime getEnd() {
+            return end;
+        }
     }
 
-    @lombok.Data
     private static class RouteSegment {
         private final double startLat;
         private final double startLon;
         private final double endLat;
         private final double endLon;
+
+        private RouteSegment(double startLat, double startLon, double endLat, double endLon) {
+            this.startLat = startLat;
+            this.startLon = startLon;
+            this.endLat = endLat;
+            this.endLon = endLon;
+        }
+
+        public double getStartLat() {
+            return startLat;
+        }
+
+        public double getStartLon() {
+            return startLon;
+        }
+
+        public double getEndLat() {
+            return endLat;
+        }
+
+        public double getEndLon() {
+            return endLon;
+        }
     }
 
     // Private helper methods

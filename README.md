@@ -9,29 +9,23 @@ graph TD
     Client[GPS Device/Client] -->|WebSocket| WS[WebSocket Handler]
     WS --> Auth[Authentication]
     Auth --> Processor[Data Processor]
-    Processor -->|Cache| Redis[(Redis)]
-    Processor -->|Stream| Consumer[Data Consumer]
-    Consumer -->|Export| CSV[CSV Export]
-    Consumer -->|API| REST[REST API]
+    Processor -->|Simulated insights| AI[AI Services]
+    Processor -->|API| REST[REST API]
 ```
 
-The platform utilizes a microservices architecture with the following components:
-- WebSocket server for real-time data streaming
-- Redis for high-performance data caching and persistence
-- Spring Security for authentication and authorization
-- REST API for data export and management
-- Scheduled tasks for data maintenance
+The platform uses a modular Spring Boot architecture with the following components:
+- WebSocket server for real-time data streaming and subscriptions
+- REST APIs for AI predictions, anomaly detection, and geofence management
+- Service layer for simulated device data and predictive insights
+- Spring Security for authentication and authorization (default credentials in development)
 
 ## Features
 
 - Real-time GPS data streaming via WebSockets
-- Redis caching with 7-day data retention
-- CSV export functionality (on-demand and scheduled)
-- Device authentication
+- AI route prediction and anomaly detection endpoints
+- Geofence management APIs
+- Simulated device data for UI demos
 - Basic security for API endpoints
-- Configurable data retention policies
-- Batch export capabilities
-- Real-time data validation
 - Error handling and retry mechanisms
 
 ## Prerequisites
@@ -45,7 +39,6 @@ The platform utilizes a microservices architecture with the following components
 ### Option 2: Running Locally
 - Java 11
 - Maven 3.6+
-- Redis server running on localhost:6379
 - 4GB RAM minimum
 - 20GB free disk space
 
@@ -56,10 +49,9 @@ nomad/
 ├── src/main/
 │   ├── java/com/gpstracker/
 │   │   ├── config/          # Configuration classes
-│   │   ├── controller/      # REST endpoints
-│   │   ├── model/          # Data models
-│   │   ├── service/        # Business logic
-│   │   └── websocket/      # WebSocket handlers
+│   │   ├── controller/      # REST endpoints + WebSocket handlers
+│   │   ├── model/           # Data models
+│   │   └── service/         # Business logic and simulators
 │   └── resources/
 │       ├── application.properties  # App configuration
 │       └── templates/      # HTML templates
@@ -114,15 +106,28 @@ mvn spring-boot:run
 
 ### REST Endpoints
 
-#### Export GPS Data
+#### Predict Routes
 - Method: GET
-- URL: `/api/gps/export`
-- Auth: Basic Authentication
+- URL: `/api/ai/predict/route`
 - Parameters:
   - deviceId (required): Device identifier
-  - startTime (required): Start timestamp (ISO-8601)
-  - endTime (required): End timestamp (ISO-8601)
-  - format (optional): "csv" or "json" (default: "csv")
+  - startTime (optional): Start timestamp (ISO-8601)
+
+#### Detect Anomalies
+- Method: POST
+- URL: `/api/ai/detect/anomalies`
+- Parameters:
+  - deviceId (required): Device identifier
+- Body: GPS data JSON payload
+
+#### Manage Geofence
+- Method: POST
+- URL: `/api/gps/geofence`
+- Parameters:
+  - deviceId (required): Device identifier
+  - centerLat (required): Geofence center latitude
+  - centerLon (required): Geofence center longitude
+  - radius (required): Radius in kilometers
 
 ## Security
 
@@ -164,7 +169,7 @@ spring.security.user.password=admin  # Change in production
 logging.level.com.gpstracker=DEBUG
 
 # OpenWeatherMap API Key
-openweathermap.api.key=YOUR_API_KEY
+openweathermap.api.key=${OPENWEATHERMAP_API_KEY:}
 ```
 
 ## Error Handling
@@ -271,7 +276,7 @@ k6 run load-test.js
    - Monitor Redis memory
    - Review network settings
 
-3. Export Issues
+4. Export Issues
    - Validate date range format
    - Check file permissions
    - Verify available disk space
