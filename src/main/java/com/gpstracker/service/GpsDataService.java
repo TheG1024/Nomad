@@ -7,6 +7,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Duration;
 import java.time.format.DateTimeFormatter;
@@ -32,6 +33,10 @@ public class GpsDataService {
     private RedisTemplate<String, GpsData> redisTemplate;
 
     public void saveGpsData(GpsData gpsData) {
+        if (gpsData.getTimestamp() == null) {
+            gpsData.setTimestamp(LocalDateTime.now());
+        }
+
         // Update device status
         updateDeviceStatus(gpsData);
         
@@ -50,24 +55,34 @@ public class GpsDataService {
         
         // Update statistics
         updateStatistics(gpsData);
+
+        String lastDataKey = getLastDataKey(gpsData.getDeviceId());
+        redisTemplate.opsForValue().set(lastDataKey, gpsData);
+        redisTemplate.expire(lastDataKey, DATA_RETENTION_DAYS, TimeUnit.DAYS);
     }
 
     private void updateDeviceStatus(GpsData gpsData) {
         // Get last known data
         String lastDataKey = getLastDataKey(gpsData.getDeviceId());
         GpsData lastData = redisTemplate.opsForValue().get(lastDataKey);
-        
-        if (lastData != null) {
-            Duration timeSinceLastUpdate = Duration.between(lastData.getTimestamp(), gpsData.getTimestamp());
-            
+
+        gpsData.setDeviceStatus(determineDeviceStatus(gpsData, lastData));
+    }
+
+    private String determineDeviceStatus(GpsData currentData, GpsData lastData) {
+        if (lastData != null && lastData.getTimestamp() != null) {
+            Duration timeSinceLastUpdate = Duration.between(lastData.getTimestamp(), currentData.getTimestamp());
+
             if (timeSinceLastUpdate.toMinutes() > OFFLINE_THRESHOLD_MINUTES) {
-                gpsData.setDeviceStatus("OFFLINE");
-            } else if (gpsData.getSpeed() < 1.0) {
-                gpsData.setDeviceStatus("IDLE");
-            } else {
-                gpsData.setDeviceStatus("ACTIVE");
+                return "OFFLINE";
             }
         }
+
+        if (currentData.getSpeed() < 1.0) {
+            return "IDLE";
+        }
+
+        return "ACTIVE";
     }
 
     private void checkAlerts(GpsData gpsData) {
@@ -155,28 +170,43 @@ public class GpsDataService {
         return GPS_DATA_KEY_PREFIX + deviceId + ":last";
     }
 
-    public Map<String, Object> getDeviceStatistics(String deviceId, LocalDateTime date) {
+    public Map<String, Object> getDeviceStatistics(String deviceId, LocalDate date) {
         String statsKey = STATS_KEY_PREFIX + deviceId + ":" + date.format(DateTimeFormatter.ISO_LOCAL_DATE);
         Map<Object, Object> rawData = redisTemplate.opsForHash().entries(statsKey);
-        
-        // Convert Map<Object, Object> to Map<String, Object>
+
         Map<String, Object> result = new HashMap<>();
         rawData.forEach((key, value) -> result.put(key.toString(), value));
         return result;
     }
 
+    public Optional<GpsData> getLatestGpsData(String deviceId) {
+        return Optional.ofNullable(redisTemplate.opsForValue().get(getLastDataKey(deviceId)));
+    }
+
+    public int getRecentAlertCount(String deviceId, Duration lookbackWindow) {
+        String alertKey = ALERT_KEY_PREFIX + deviceId;
+        LocalDateTime cutoff = LocalDateTime.now().minus(lookbackWindow);
+        return (int) Optional.ofNullable(redisTemplate.opsForList().range(alertKey, 0, -1))
+                .orElse(Collections.emptyList())
+                .stream()
+                .filter(data -> data != null && data.getTimestamp() != null)
+                .filter(data -> !data.getTimestamp().isBefore(cutoff))
+                .count();
+    }
+
     public List<GpsData> getGpsDataForDevice(String deviceId, LocalDateTime startTime, LocalDateTime endTime) {
         String keyPattern = GPS_DATA_KEY_PREFIX + deviceId + ":*";
         Set<String> keys = redisTemplate.keys(keyPattern);
-        
-        return keys.stream()
-                  .map(key -> redisTemplate.opsForValue().get(key))
-                  .filter(data -> {
-                      LocalDateTime timestamp = data.getTimestamp();
-                      return timestamp.isAfter(startTime) && timestamp.isBefore(endTime);
-                  })
-                  .sorted(Comparator.comparing(GpsData::getTimestamp))
-                  .collect(Collectors.toList());
+
+        return Optional.ofNullable(keys)
+                .orElse(Collections.emptySet())
+                .stream()
+                .map(key -> redisTemplate.opsForValue().get(key))
+                .filter(Objects::nonNull)
+                .filter(data -> data.getTimestamp() != null)
+                .filter(data -> !data.getTimestamp().isBefore(startTime) && !data.getTimestamp().isAfter(endTime))
+                .sorted(Comparator.comparing(GpsData::getTimestamp))
+                .collect(Collectors.toList());
     }
 
     public List<GpsData> getAlerts(String deviceId, LocalDateTime startTime, LocalDateTime endTime) {
@@ -184,10 +214,9 @@ public class GpsDataService {
         return Optional.ofNullable(redisTemplate.opsForList().range(alertKey, 0, -1))
                 .orElse(Collections.emptyList())
                 .stream()
-                .filter(data -> {
-                    LocalDateTime timestamp = data.getTimestamp();
-                    return timestamp.isAfter(startTime) && timestamp.isBefore(endTime);
-                })
+                .filter(Objects::nonNull)
+                .filter(data -> data.getTimestamp() != null)
+                .filter(data -> !data.getTimestamp().isBefore(startTime) && !data.getTimestamp().isAfter(endTime))
                 .collect(Collectors.toList());
     }
 

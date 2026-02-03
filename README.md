@@ -107,10 +107,15 @@ mvn spring-boot:run
 
 ### WebSocket Endpoints
 
-#### GPS Data Stream
+#### GPS Data Stream (Device WebSocket)
 - URL: `ws://localhost:8080/gps`
-- Authentication: Device ID (query param or header)
-- Message Format: JSON
+- Protocol: SockJS/Plain WebSocket (JSON payloads)
+- Authentication: Device ID (payload registration)
+
+#### GPS Data Stream (STOMP)
+- URL: `http://localhost:8080/ws`
+- Send: `/app/gps`
+- Subscribe: `/topic/device/{deviceId}` and `/topic/alerts/{deviceId}`
 
 ### REST Endpoints
 
@@ -122,7 +127,13 @@ mvn spring-boot:run
   - deviceId (required): Device identifier
   - startTime (required): Start timestamp (ISO-8601)
   - endTime (required): End timestamp (ISO-8601)
-  - format (optional): "csv" or "json" (default: "csv")
+
+#### Device Summary
+- Method: GET
+- URL: `/api/gps/summary`
+- Parameters:
+  - deviceId (required): Device identifier
+  - lookbackHours (optional): Alert lookback window (default: 24)
 
 ## Security
 
@@ -271,7 +282,7 @@ k6 run load-test.js
    - Monitor Redis memory
    - Review network settings
 
-3. Export Issues
+4. Export Issues
    - Validate date range format
    - Check file permissions
    - Verify available disk space

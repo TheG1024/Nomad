@@ -15,6 +15,8 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -73,7 +75,7 @@ public class GpsWebSocketHandler extends TextWebSocketHandler {
                     .longitude(longitude != null ? longitude : 0.0)
                     .speed(speed != null ? speed : 0.0)
                     .heading(heading != null ? heading : 0.0)
-                    .timestamp(LocalDateTime.parse(timestampString))
+                    .timestamp(parseTimestamp(timestampString))
                     .additionalInfo(additionalInfo)
                     .build();
 
@@ -147,6 +149,18 @@ public class GpsWebSocketHandler extends TextWebSocketHandler {
             session.sendMessage(new TextMessage(jsonMessage));
         } catch (IOException e) {
             log.error("Error sending message to session {}", session.getId(), e);
+        }
+    }
+
+    private LocalDateTime parseTimestamp(String timestampString) {
+        if (timestampString == null || timestampString.isBlank()) {
+            return LocalDateTime.now();
+        }
+
+        try {
+            return OffsetDateTime.parse(timestampString).toLocalDateTime();
+        } catch (DateTimeParseException e) {
+            return LocalDateTime.parse(timestampString);
         }
     }
 

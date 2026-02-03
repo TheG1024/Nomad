@@ -1,6 +1,7 @@
 package com.gpstracker.controller;
 
 import com.gpstracker.model.GpsData;
+import com.gpstracker.model.DeviceSummary;
 import com.gpstracker.service.ExportService;
 import com.gpstracker.service.GpsDataService;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +17,8 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -86,13 +89,31 @@ public class GpsDataController {
     @GetMapping("/statistics")
     public ResponseEntity<Map<String, Object>> getStatistics(
             @RequestParam String deviceId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDateTime date) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         
         try {
             Map<String, Object> stats = gpsDataService.getDeviceStatistics(deviceId, date);
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
             log.error("Error retrieving statistics: ", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/summary")
+    public ResponseEntity<DeviceSummary> getDeviceSummary(
+            @RequestParam String deviceId,
+            @RequestParam(defaultValue = "24") long lookbackHours) {
+        try {
+            DeviceSummary summary = DeviceSummary.builder()
+                    .deviceId(deviceId)
+                    .latestData(gpsDataService.getLatestGpsData(deviceId).orElse(null))
+                    .dailyStatistics(gpsDataService.getDeviceStatistics(deviceId, LocalDate.now()))
+                    .recentAlertCount(gpsDataService.getRecentAlertCount(deviceId, Duration.ofHours(lookbackHours)))
+                    .build();
+            return ResponseEntity.ok(summary);
+        } catch (Exception e) {
+            log.error("Error retrieving device summary: ", e);
             return ResponseEntity.internalServerError().build();
         }
     }
