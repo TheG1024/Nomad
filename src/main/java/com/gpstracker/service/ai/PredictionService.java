@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.time.temporal.ChronoUnit;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -250,7 +251,7 @@ public class PredictionService {
         
         return locations.values().stream()
                        .filter(loc -> loc.frequency >= 5)
-                       .toList();
+                       .collect(Collectors.toList());
     }
 
     private Map<Integer, TimeRange> analyzeActiveHours(List<GpsData> data) {
