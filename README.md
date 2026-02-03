@@ -132,8 +132,8 @@ mvn spring-boot:run
 ## Security
 
 ### Authentication
-- WebSocket connections require valid device IDs
-- REST API endpoints use Basic Authentication
+- WebSocket connections and REST API endpoints use Basic Authentication
+- Configure credentials via environment variables (see configuration below)
 - Custom authentication can be configured in SecurityConfig.java
 
 ### Best Practices
@@ -162,8 +162,9 @@ spring.redis.password=  # Set in production
 websocket.allowed-origins=*  # Restrict in production
 
 # Security
-spring.security.user.name=admin  # Change in production
-spring.security.user.password=admin  # Change in production
+spring.security.user.name=${NOMAD_ADMIN_USER}
+spring.security.user.password=${NOMAD_ADMIN_PASSWORD}
+nomad.security.allowed-origins=http://localhost:8080
 
 # Logging
 logging.level.com.gpstracker=DEBUG

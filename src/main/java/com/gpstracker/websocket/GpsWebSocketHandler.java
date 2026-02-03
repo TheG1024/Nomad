@@ -55,9 +55,8 @@ public class GpsWebSocketHandler extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         try {
             String messagePayload = message.getPayload();
-            log.info("Server received: {}", messagePayload);
+            log.info("Server received a WebSocket payload for session {}", session.getId());
 
-            // Use HashMap for deserialization
             HashMap<?, ?> value = objectMapper.readValue(messagePayload, HashMap.class);
 
             String deviceId = (String) value.get("deviceId");
