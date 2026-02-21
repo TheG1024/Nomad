@@ -34,7 +34,7 @@ public class SecurityConfig {
             .and()
             .csrf().disable()
             .authorizeRequests()
-                .antMatchers("/", "/index.html", "/test.html").permitAll()
+                .antMatchers("/", "/track").permitAll()
                 .antMatchers("/ws/**", "/gps/**").permitAll()
                 .antMatchers("/api/**").authenticated()
                 .anyRequest().authenticated()
@@ -46,7 +46,12 @@ public class SecurityConfig {
             .and()
             .headers()
                 .frameOptions().sameOrigin()
-                .cacheControl();
+                .cacheControl()
+            .and()
+                .referrerPolicy(referrer -> referrer.policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+                .xssProtection()
+            .and()
+                .contentTypeOptions();
         
         return http.build();
     }
