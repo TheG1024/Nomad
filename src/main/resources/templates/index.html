@@ -44,6 +44,7 @@
         <div class="container">
             <a class="navbar-brand" href="#">Nomad GPS Tracker</a>
             <div class="d-flex">
+                <span id="connectionStatus" class="badge bg-secondary align-self-center me-2">Disconnected</span>
                 <input type="text" id="deviceId" class="form-control me-2" placeholder="Device ID">
                 <button class="btn btn-outline-light" onclick="connectDevice()">Connect</button>
             </div>
@@ -74,7 +75,10 @@
             <div class="col-lg-4">
                 <div class="card mb-4">
                     <div class="card-body">
-                        <h5 class="card-title">Live Alerts & Anomalies</h5>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Live Alerts & Anomalies</h5>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="clearAlerts()">Clear</button>
+                        </div>
                         <div id="alerts" class="alert-panel"></div>
                     </div>
                 </div>
@@ -116,6 +120,24 @@
                 </div>
             </div>
         </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card stats-card text-center mb-4">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">Last Update</h6>
+                        <h4 id="lastUpdate">-</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card stats-card text-center mb-4">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">Tracking Health</h6>
+                        <h4 id="trackingHealth">Waiting for data</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Geofence Controls -->
         <div class="card mb-4">
@@ -148,6 +170,10 @@
         let map, marker, geofenceCircle;
         let stompClient = null;
         let routePolylines = [];
+        let lastPredictionTimestamp = 0;
+        let totalDistanceKm = 0;
+        let lastPosition = null;
+        const predictionIntervalMs = 5 * 60 * 1000;
 
         // Initialize map
         function initMap() {
@@ -171,6 +197,7 @@
 
             stompClient.connect({}, function(frame) {
                 console.log('Connected: ' + frame);
+                setConnectionStatus('Connected', true);
 
                 // Subscribe to device updates
                 stompClient.subscribe('/topic/device/' + deviceId, function(data) {
@@ -190,7 +217,14 @@
 
                 // Send subscription message
                 stompClient.send("/app/subscribe", {}, deviceId);
+            }, function(error) {
+                console.error('Connection error', error);
+                setConnectionStatus('Disconnected', false);
             });
+
+            stompClient.onWebSocketClose = function() {
+                setConnectionStatus('Disconnected', false);
+            };
         }
 
         // Predict route
@@ -280,8 +314,13 @@
             
             map.setView(position, 15);
 
-            // Update route predictions every 5 minutes
-            if (new Date().getMinutes() % 5 === 0) {
+            updateLastUpdate();
+            updateTrackingHealth(data);
+            updateTotalDistance(position);
+
+            // Update route predictions roughly every 5 minutes
+            if (Date.now() - lastPredictionTimestamp > predictionIntervalMs) {
+                lastPredictionTimestamp = Date.now();
                 predictRoute(data.deviceId);
             }
         }
@@ -291,6 +330,40 @@
             document.getElementById('currentSpeed').textContent = data.speed.toFixed(1) + ' km/h';
             document.getElementById('batteryLevel').textContent = (data.batteryLevel * 100).toFixed(0) + '%';
             document.getElementById('deviceStatus').textContent = data.deviceStatus;
+        }
+
+        function updateLastUpdate() {
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+        }
+
+        function updateTrackingHealth(data) {
+            const health = data.speed > 80 ? 'High speed detected' : 'Nominal';
+            document.getElementById('trackingHealth').textContent = health;
+        }
+
+        function updateTotalDistance(position) {
+            if (lastPosition) {
+                totalDistanceKm += calculateDistanceKm(lastPosition, position);
+                document.getElementById('totalDistance').textContent = totalDistanceKm.toFixed(2) + ' km';
+            }
+            lastPosition = position;
+        }
+
+        function calculateDistanceKm(start, end) {
+            const earthRadiusKm = 6371;
+            const latDiff = toRadians(end[0] - start[0]);
+            const lonDiff = toRadians(end[1] - start[1]);
+            const lat1 = toRadians(start[0]);
+            const lat2 = toRadians(end[0]);
+
+            const a = Math.sin(latDiff / 2) ** 2
+                + Math.cos(lat1) * Math.cos(lat2) * Math.sin(lonDiff / 2) ** 2;
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return earthRadiusKm * c;
+        }
+
+        function toRadians(degrees) {
+            return degrees * (Math.PI / 180);
         }
 
         // Display alert
@@ -303,6 +376,7 @@
             if (data.speedAlert) alertText += 'Speed Limit Exceeded! ';
             if (data.geofenceAlert) alertText += 'Geofence Breach! ';
             if (data.malfunctionAlert) alertText += 'Device Malfunction! ';
+            if (data.message) alertText += data.message;
             
             alertDiv.innerHTML = `
                 ${alertText}
@@ -310,6 +384,16 @@
             `;
             
             document.getElementById('alerts').prepend(alertDiv);
+        }
+
+        function clearAlerts() {
+            document.getElementById('alerts').innerHTML = '';
+        }
+
+        function setConnectionStatus(status, isConnected) {
+            const statusElement = document.getElementById('connectionStatus');
+            statusElement.textContent = status;
+            statusElement.className = 'badge ' + (isConnected ? 'bg-success' : 'bg-secondary') + ' align-self-center me-2';
         }
 
         // Set geofence
