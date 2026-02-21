@@ -3,7 +3,6 @@ package com.gpstracker.controller;
 import com.gpstracker.model.GpsData;
 import com.gpstracker.service.ExportService;
 import com.gpstracker.service.GpsDataService;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -19,12 +18,14 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@Slf4j
 @RestController
 @RequestMapping("/api/gps")
 @CrossOrigin(origins = "*")
 public class GpsDataController {
+    private static final Logger log = LoggerFactory.getLogger(GpsDataController.class);
 
     @Autowired
     private ExportService exportService;

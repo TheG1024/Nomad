@@ -1,8 +1,13 @@
 package com.gpstracker.model;
 
-import lombok.Data;
-
-@Data
 public class City {
     private String name;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
 }

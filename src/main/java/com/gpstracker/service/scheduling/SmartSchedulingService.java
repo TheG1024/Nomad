@@ -3,18 +3,19 @@ package com.gpstracker.service.scheduling;
 import com.gpstracker.service.weather.WeatherAwareRoutingService;
 import com.gpstracker.model.GpsData;
 import com.gpstracker.model.fleet.*;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-@Slf4j
 @Service
 public class SmartSchedulingService {
+    private static final Logger log = LoggerFactory.getLogger(SmartSchedulingService.class);
 
     @Autowired
     private WeatherAwareRoutingService weatherService;
@@ -221,19 +222,63 @@ public class SmartSchedulingService {
         return schedule.calculateUrgency();
     }
 
-    @lombok.Data
     private static class VehicleTimeSlot {
         private final String vehicleId;
         private final String driverId;
         private final LocalDateTime startTime;
         private final LocalDateTime endTime;
+
+        private VehicleTimeSlot(String vehicleId, String driverId, LocalDateTime startTime, LocalDateTime endTime) {
+            this.vehicleId = vehicleId;
+            this.driverId = driverId;
+            this.startTime = startTime;
+            this.endTime = endTime;
+        }
+
+        public String getVehicleId() {
+            return vehicleId;
+        }
+
+        public String getDriverId() {
+            return driverId;
+        }
+
+        public LocalDateTime getStartTime() {
+            return startTime;
+        }
+
+        public LocalDateTime getEndTime() {
+            return endTime;
+        }
     }
 
-    @lombok.Data
     private static class VehicleStatus {
         private final String vehicleId;
         private final GpsData lastLocation;
         private final double fuelLevel;
         private final double maintenanceUrgency;
+
+        private VehicleStatus(String vehicleId, GpsData lastLocation, double fuelLevel, double maintenanceUrgency) {
+            this.vehicleId = vehicleId;
+            this.lastLocation = lastLocation;
+            this.fuelLevel = fuelLevel;
+            this.maintenanceUrgency = maintenanceUrgency;
+        }
+
+        public String getVehicleId() {
+            return vehicleId;
+        }
+
+        public GpsData getLastLocation() {
+            return lastLocation;
+        }
+
+        public double getFuelLevel() {
+            return fuelLevel;
+        }
+
+        public double getMaintenanceUrgency() {
+            return maintenanceUrgency;
+        }
     }
 }

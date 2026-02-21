@@ -2,16 +2,17 @@ package com.gpstracker.websocket;
 
 import com.gpstracker.model.GpsData;
 import com.gpstracker.service.GpsDataService;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@Slf4j
 @Controller
 public class GpsWebSocketController {
+    private static final Logger log = LoggerFactory.getLogger(GpsWebSocketController.class);
 
     @Autowired
     private GpsDataService gpsDataService;

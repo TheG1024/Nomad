@@ -2,19 +2,20 @@ package com.gpstracker.service.social;
 
 import com.gpstracker.model.GpsData;
 import com.gpstracker.model.fleet.social.FleetSocialData.*;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-@Slf4j
 @Service
 public class FleetSocialService {
+    private static final Logger log = LoggerFactory.getLogger(FleetSocialService.class);
 
     private static final String FLEET_KEY_PREFIX = "fleet:";
     private static final String ACHIEVEMENT_KEY_PREFIX = "achievement:";

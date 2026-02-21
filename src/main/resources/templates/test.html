@@ -168,7 +168,10 @@
                 longitude: -122.4194,
                 speed: 30.5,
                 heading: 180.0,
-                timestamp: new Date().toISOString(),
+                timestamp: new Date().toISOString().replace('Z', ''),
+                accuracy: 12.5,
+                signalStrength: 4,
+                networkType: 'LTE',
                 additionalInfo: 'Test data'
             };
 
