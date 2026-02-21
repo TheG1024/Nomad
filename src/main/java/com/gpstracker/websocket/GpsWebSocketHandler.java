@@ -5,23 +5,25 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.gpstracker.model.GpsData;
 import com.gpstracker.service.GpsDataService;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Slf4j
 @Component
 public class GpsWebSocketHandler extends TextWebSocketHandler {
+    private static final Logger log = LoggerFactory.getLogger(GpsWebSocketHandler.class);
 
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
     private final Map<String, String> sessionToDeviceId = new ConcurrentHashMap<>();
@@ -53,7 +55,7 @@ public class GpsWebSocketHandler extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         try {
             String messagePayload = message.getPayload();
-            log.info("Server received: {}", messagePayload);
+            log.info("WebSocket message received");
 
             // Use HashMap for deserialization
             HashMap<?, ?> value = objectMapper.readValue(messagePayload, HashMap.class);
@@ -66,16 +68,23 @@ public class GpsWebSocketHandler extends TextWebSocketHandler {
             String timestampString = (String) value.get("timestamp");
             String additionalInfo = (String) value.get("additionalInfo");
 
+            LocalDateTime timestamp = LocalDateTime.now();
+            if (timestampString != null) {
+                try {
+                    timestamp = LocalDateTime.parse(timestampString);
+                } catch (DateTimeParseException e) {
+                    log.warn("Invalid timestamp format received: {}", timestampString);
+                }
+            }
 
-            GpsData gpsData = GpsData.builder()
-                    .deviceId(deviceId)
-                    .latitude(latitude != null ? latitude : 0.0) // Default values
-                    .longitude(longitude != null ? longitude : 0.0)
-                    .speed(speed != null ? speed : 0.0)
-                    .heading(heading != null ? heading : 0.0)
-                    .timestamp(LocalDateTime.parse(timestampString))
-                    .additionalInfo(additionalInfo)
-                    .build();
+            GpsData gpsData = new GpsData();
+            gpsData.setDeviceId(deviceId);
+            gpsData.setLatitude(latitude != null ? latitude : 0.0);
+            gpsData.setLongitude(longitude != null ? longitude : 0.0);
+            gpsData.setSpeed(speed != null ? speed : 0.0);
+            gpsData.setHeading(heading != null ? heading : 0.0);
+            gpsData.setTimestamp(timestamp);
+            gpsData.setAdditionalInfo(additionalInfo);
 
 
             String sessionId = session.getId();
