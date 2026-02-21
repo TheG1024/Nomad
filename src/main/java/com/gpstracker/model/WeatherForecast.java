@@ -1,11 +1,24 @@
 package com.gpstracker.model;
 
-import lombok.Data;
-
 import java.util.List;
 
-@Data
 public class WeatherForecast {
     private List<WeatherItem> list;
     private City city;
+
+    public List<WeatherItem> getList() {
+        return list;
+    }
+
+    public void setList(List<WeatherItem> list) {
+        this.list = list;
+    }
+
+    public City getCity() {
+        return city;
+    }
+
+    public void setCity(City city) {
+        this.city = city;
+    }
 }
