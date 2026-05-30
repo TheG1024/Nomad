@@ -3,6 +3,8 @@ package com.gpstracker.controller;
 import com.gpstracker.dto.DeviceUpdateDTO;
 import com.gpstracker.dto.GeofenceEventDTO;
 import com.gpstracker.model.alert.UserReportedAlert;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
 
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -30,6 +32,14 @@ public class WebSocketController {
     
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
+    
+    /**
+     * Serve the device pairing page
+     */
+    @GetMapping("/pair")
+    public String pairDevice() {
+        return "pair-device";
+    }
     
     /**
      * Handle device location updates sent from clients
