@@ -6,6 +6,8 @@
   <title>Nomad - Cyber Terminal</title>
   <link rel="stylesheet" href="/vendor/css/leaflet.css" />
   <script src="/vendor/js/leaflet.js"></script>
+  <script src="/static/js/device-pairing.js"></script>
+  <script src="/static/js/cyber-map.js"></script>
   <style>
     :root {
       --bg-primary: #0a0a0a;
@@ -475,20 +477,21 @@
           <div class="status-dot"></div>
           <span>SYSTEMS ONLINE</span>
         </div>
-        <a href="/pair" target="_blank" class="pair-device-btn" style="
+        <button onclick="showPairingModal()" class="pair-device-btn" style="
           margin: 0 15px;
           padding: 8px 16px;
           background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+          border: none;
           color: #000;
-          text-decoration: none;
           border-radius: 6px;
           font-weight: bold;
           font-size: 12px;
           font-family: 'JetBrains Mono', monospace;
+          cursor: pointer;
           transition: all 0.2s;
         " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,255,136,0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
           📡 Pair Device
-        </a>
+        </button>
         <input type="text" class="search-box" placeholder="Search devices...">
       </div>
     </header>
@@ -525,11 +528,7 @@
       <div class="sidebar-section">
         <div class="sidebar-title">Quick Actions</div>
         <div class="quick-actions">
-          <a href="/pair" target="_blank" class="action-btn" style="
-            text-decoration: none;
-            display: block;
-            text-align: center;
-          ">+ Add Device</a>
+          <button class="action-btn" onclick="showPairingModal(); return false;">+ Add Device</button>
           <button class="action-btn">+ New Zone</button>
           <button class="action-btn">Export</button>
           <button class="action-btn primary">Refresh</button>
