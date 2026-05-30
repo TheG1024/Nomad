@@ -43,3 +43,15 @@ logs/
 ### OS specific ###
 .DS_Store
 Thumbs.db
+.qodo
+
+### Frontend ###
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+frontend/coverage/
+
+### Test artifacts ###
+test_output*.txt
+compile_errors.txt
+integration_test*.txt

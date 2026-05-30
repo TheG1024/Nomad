@@ -6,25 +6,27 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
+/**
+ * WebSocket configuration for real-time updates
+ */
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        // Enable prefix for messages TO client
+        // Enable a simple in-memory message broker for topic destinations
         config.enableSimpleBroker("/topic");
         
-        // Enable prefix for messages FROM client
+        // Set the application destination prefix for client-to-server messages
         config.setApplicationDestinationPrefixes("/app");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Register the "/ws" endpoint, enabling SockJS fallback options
+        // Register STOMP endpoint with SockJS fallback
         registry.addEndpoint("/ws")
-            .setAllowedOrigins("*")
-            .withSockJS()
-            .setClientLibraryUrl("https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js");
+                .setAllowedOrigins("*")
+                .withSockJS();
     }
 }

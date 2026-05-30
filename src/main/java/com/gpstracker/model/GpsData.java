@@ -12,45 +12,51 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Represents GPS tracking data for a device
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class GpsData implements Serializable {
     private String deviceId;
-    private double latitude;
-    private double longitude;
-    private double speed;
-    private double heading;
-    
+
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
     @JsonDeserialize(using = LocalDateTimeDeserializer.class)
     @JsonSerialize(using = LocalDateTimeSerializer.class)
     private LocalDateTime timestamp;
-    
+
+    private double latitude;
+    private double longitude;
+    private double speed;
+    private double heading;
+
     // Device status
-    private double batteryLevel;
+    private double batteryLevel; // Percentage (0.0–100.0)
     private String deviceStatus; // ACTIVE, IDLE, OFFLINE
     private double accuracy; // GPS accuracy in meters
-    
+
     // Alert flags
     private boolean lowBattery;
     private boolean geofenceAlert;
     private boolean speedAlert;
     private boolean malfunctionAlert;
-    
+
     // Environmental data
     private double altitude;
     private double temperature;
     private double humidity;
-    
+
     // Network info
-    private String networkType; // GSM, WIFI, etc.
-    private int signalStrength;
-    
+    private String networkType; // 4G, 5G, WiFi, etc.
+    private int signalStrength; // Signal strength percentage
+
     // Extended data
-    private Map<String, Object> metadata;
+    @Builder.Default
+    private Map<String, Object> metadata = new HashMap<>();
     private String additionalInfo;
 }

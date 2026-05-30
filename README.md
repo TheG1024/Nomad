@@ -91,7 +91,7 @@ docker-compose down
 
 ### Running Locally
 
-1. Start Redis server
+1. Start Redis server (e.g., using `redis-server` command or Docker)
 
 2. Build the application:
 ```bash

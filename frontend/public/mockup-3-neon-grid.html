@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nomad - Neon Grid</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    :root {
+      --neon-cyan: #00f0ff;
+      --neon-magenta: #ff00aa;
+      --neon-yellow: #f0ff00;
+      --neon-green: #00ff66;
+      --bg-dark: #050510;
+      --bg-panel: rgba(10, 10, 25, 0.85);
+      --border-glow: rgba(0, 240, 255, 0.3);
+      --text-primary: #e8e8e8;
+      --text-dim: #6a6a8a;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+      /* Grid pattern background */
+      background-image: 
+        linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+    }
+
+    /* Dashboard Grid */
+    .dashboard {
+      display: grid;
+      grid-template-columns: 240px 1fr 260px;
+      grid-template-rows: 60px 1fr 200px;
+      min-height: 100vh;
+      gap: 2px;
+      padding: 2px;
+      background: var(--border-glow);
+    }
+
+    /* Header */
+    .header {
+      grid-column: 1 / -1;
+      background: var(--bg-panel);
+      backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      border: 1px solid var(--border-glow);
+    }
+
+    .logo {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--neon-cyan);
+      text-shadow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan);
+      letter-spacing: 2px;
+    }
+
+    .logo::before {
+      content: '█ ';
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    .header-menu {
+      display: flex;
+      gap: 4px;
+    }
+
+    .menu-item {
+      padding: 8px 20px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      background: transparent;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      position: relative;
+    }
+
+    .menu-item:hover {
+      color: var(--neon-cyan);
+      border-color: var(--border-glow);
+      text-shadow: 0 0 8px var(--neon-cyan);
+    }
+
+    .menu-item.active {
+      color: var(--neon-cyan);
+      border: 1px solid var(--neon-cyan);
+      background: rgba(0, 240, 255, 0.1);
+      text-shadow: 0 0 8px var(--neon-cyan);
+    }
+
+    /* Sidebar Left */
+    .sidebar-left {
+      background: var(--bg-panel);
+      backdrop-filter: blur(20px);
+      padding: 16px;
+      border: 1px solid var(--border-glow);
+      overflow-y: auto;
+    }
+
+    .panel-title {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--neon-cyan);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-glow);
+    }
+
+    .device-row {
+      display: flex;
+      align-items: center;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .device-row:hover {
+      border-color: var(--border-glow);
+      background: rgba(0, 240, 255, 0.05);
+    }
+
+    .device-row.active {
+      border-color: var(--neon-cyan);
+      background: rgba(0, 240, 255, 0.1);
+      box-shadow: inset 0 0 20px rgba(0, 240, 255, 0.1);
+    }
+
+    .device-indicator {
+      width: 8px;
+      height: 8px;
+      margin-right: 10px;
+      border-radius: 2px;
+    }
+
+    .device-indicator.online { 
+      background: var(--neon-green); 
+      box-shadow: 0 0 8px var(--neon-green);
+    }
+    .device-indicator.warning { 
+      background: var(--neon-yellow); 
+      box-shadow: 0 0 8px var(--neon-yellow);
+    }
+    .device-indicator.offline { 
+      background: var(--neon-magenta); 
+      box-shadow: 0 0 8px var(--neon-magenta);
+    }
+
+    .device-info h4 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .device-info p {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--text-dim);
+    }
+
+    /* Map */
+    .map-section {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-glow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    #neon-map {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Stats overlay */
+    .stats-grid {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 1000;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .stat-box {
+      background: rgba(5, 5, 16, 0.9);
+      border: 1px solid var(--neon-cyan);
+      padding: 12px 16px;
+      min-width: 100px;
+      position: relative;
+    }
+
+    .stat-box::before {
+      content: '';
+      position: absolute;
+      top: -1px;
+      left: -1px;
+      right: -1px;
+      height: 2px;
+      background: var(--neon-cyan);
+      box-shadow: 0 0 10px var(--neon-cyan);
+    }
+
+    .stat-number {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--neon-cyan);
+      text-shadow: 0 0 10px var(--neon-cyan);
+    }
+
+    .stat-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+    }
+
+    /* Right sidebar */
+    .sidebar-right {
+      background: var(--bg-panel);
+      backdrop-filter: blur(20px);
+      padding: 16px;
+      border: 1px solid var(--border-glow);
+      overflow-y: auto;
+    }
+
+    /* Gauge */
+    .gauge-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .gauge {
+      width: 120px;
+      height: 60px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .gauge-bg {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: conic-gradient(
+        from 180deg,
+        var(--neon-green) 0deg,
+        var(--neon-green) 140deg,
+        var(--neon-yellow) 140deg,
+        var(--neon-yellow) 170deg,
+        var(--neon-magenta) 170deg,
+        var(--neon-magenta) 180deg,
+        transparent 180deg
+      );
+      mask: radial-gradient(transparent 55px, black 56px);
+      -webkit-mask: radial-gradient(transparent 55px, black 56px);
+    }
+
+    .gauge-value {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--neon-green);
+      text-shadow: 0 0 10px var(--neon-green);
+    }
+
+    .gauge-label {
+      margin-top: 8px;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-dim);
+    }
+
+    /* Info List */
+    .info-list {
+      margin-bottom: 20px;
+    }
+
+    .info-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+      font-size: 0.8rem;
+    }
+
+    .info-item .label {
+      color: var(--text-dim);
+    }
+
+    .info-item .value {
+      font-family: 'Share Tech Mono', monospace;
+      color: var(--neon-cyan);
+    }
+
+    /* Log terminal */
+    .log-terminal {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--border-glow);
+      padding: 12px;
+      height: 140px;
+      overflow-y: auto;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+    }
+
+    .log-entry {
+      margin-bottom: 4px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .log-time {
+      color: var(--text-dim);
+    }
+
+    .log-tag {
+      color: var(--neon-cyan);
+    }
+
+    .log-msg {
+      color: var(--text-primary);
+    }
+
+    /* Action buttons */
+    .action-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .neon-btn {
+      padding: 10px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      background: transparent;
+      border: 1px solid var(--border-glow);
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .neon-btn:hover {
+      border-color: var(--neon-cyan);
+      color: var(--neon-cyan);
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.3), inset 0 0 10px rgba(0, 240, 255, 0.1);
+    }
+
+    .neon-btn.primary {
+      grid-column: 1 / -1;
+      background: var(--neon-cyan);
+      border-color: var(--neon-cyan);
+      color: var(--bg-dark);
+      font-weight: 700;
+    }
+
+    .neon-btn.primary:hover {
+      background: #00c8dd;
+      box-shadow: 0 0 20px var(--neon-cyan);
+    }
+
+    /* Bottom bar */
+    .bottom-bar {
+      grid-column: 1 / -1;
+      background: var(--bg-panel);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border-glow);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 24px;
+    }
+
+    .bar-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    .bar-item .indicator {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .bar-item .indicator.green {
+      background: var(--neon-green);
+      box-shadow: 0 0 8px var(--neon-green);
+    }
+
+    .bar-item .indicator.yellow {
+      background: var(--neon-yellow);
+      box-shadow: 0 0 8px var(--neon-yellow);
+    }
+
+    .bar-item .indicator.red {
+      background: var(--neon-magenta);
+      box-shadow: 0 0 8px var(--neon-magenta);
+    }
+
+    /* Geofence mini list */
+    .geofence-list {
+      display: flex;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .geo-chip {
+      padding: 4px 12px;
+      font-size: 0.7rem;
+      border: 1px solid var(--border-glow);
+      background: rgba(0, 0, 0, 0.3);
+    }
+
+    .geo-chip.active {
+      border-color: var(--neon-green);
+      color: var(--neon-green);
+      box-shadow: 0 0 8px rgba(0, 255, 102, 0.3);
+    }
+
+    /* Leaflet dark */
+    .leaflet-container {
+      background: var(--bg-dark) !important;
+    }
+
+    /* Responsive */
+    @media (max-width: 1100px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+        grid-template-rows: 60px auto 1fr auto auto;
+      }
+      
+      .sidebar-left, .sidebar-right {
+        max-height: 180px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">NOMAD</div>
+      <nav class="header-menu">
+        <button class="menu-item active">Tracker</button>
+        <button class="menu-item">Devices</button>
+        <button class="menu-item">Zones</button>
+        <button class="menu-item">Logs</button>
+        <button class="menu-item">Config</button>
+      </nav>
+      <div class="bar-item">
+        <span>UTC</span>
+        <span id="utc-time">10:42:30</span>
+      </div>
+    </header>
+
+    <!-- Left Sidebar -->
+    <aside class="sidebar-left">
+      <div class="panel-title">Active Units</div>
+      
+      <div class="device-row active">
+        <div class="device-indicator online"></div>
+        <div class="device-info">
+          <h4>Vehicle Alpha</h4>
+          <p>40.7128, -74.0060</p>
+        </div>
+      </div>
+      
+      <div class="device-row">
+        <div class="device-indicator warning"></div>
+        <div class="device-info">
+          <h4>Drone Beta</h4>
+          <p>34.0522, -118.2437</p>
+        </div>
+      </div>
+      
+      <div class="device-row">
+        <div class="device-indicator offline"></div>
+        <div class="device-info">
+          <h4>Tracker Gamma</h4>
+          <p>51.5074, -0.1278</p>
+        </div>
+      </div>
+
+      <div class="panel-title" style="margin-top: 24px;">Quick Add</div>
+      <div class="action-grid">
+        <button class="neon-btn">+ Unit</button>
+        <button class="neon-btn">+ Zone</button>
+      </div>
+    </aside>
+
+    <!-- Map -->
+    <main class="map-section">
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-number">03</div>
+          <div class="stat-label">Units</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number">02</div>
+          <div class="stat-label">Zones</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number">99%</div>
+          <div class="stat-label">Uptime</div>
+        </div>
+      </div>
+      <div id="neon-map"></div>
+    </main>
+
+    <!-- Right Sidebar -->
+    <aside class="sidebar-right">
+      <div class="panel-title">System Status</div>
+      
+      <div class="gauge-container">
+        <div class="gauge">
+          <div class="gauge-bg"></div>
+          <div class="gauge-value">78%</div>
+        </div>
+        <div class="gauge-label">Overall Health</div>
+      </div>
+      
+      <div class="info-list">
+        <div class="info-item">
+          <span class="label">Speed</span>
+          <span class="value">28 km/h</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Heading</span>
+          <span class="value">045° NE</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Battery</span>
+          <span class="value">78%</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Altitude</span>
+          <span class="value">--</span>
+        </div>
+      </div>
+      
+      <div class="panel-title">Event Log</div>
+      <div class="log-terminal">
+        <div class="log-entry">
+          <span class="log-time">10:42:30</span>
+          <span class="log-tag">[GPS]</span>
+          <span class="log-msg">Lock acquired</span>
+        </div>
+        <div class="log-entry">
+          <span class="log-time">10:42:28</span>
+          <span class="log-tag">[SYS]</span>
+          <span class="log-msg">Unit connected</span>
+        </div>
+        <div class="log-entry">
+          <span class="log-time">10:42:15</span>
+          <span class="log-tag">[ZONE]</span>
+          <span class="log-msg">Entered Safe Zone</span>
+        </div>
+        <div class="log-entry">
+          <span class="log-time">10:41:02</span>
+          <span class="log-tag">[WARN]</span>
+          <span class="log-msg">Drone battery low</span>
+        </div>
+      </div>
+
+      <div class="action-grid">
+        <button class="neon-btn">Export</button>
+        <button class="neon-btn">Refresh</button>
+        <button class="neon-btn primary">Details</button>
+      </div>
+    </aside>
+
+    <!-- Bottom Bar -->
+    <footer class="bottom-bar">
+      <div class="bar-item">
+        <div class="indicator green"></div>
+        <span>GPS Lock</span>
+      </div>
+      <div class="bar-item">
+        <div class="indicator green"></div>
+        <span>Network</span>
+      </div>
+      <div class="bar-item">
+        <div class="indicator yellow"></div>
+        <span>API Latency: 45ms</span>
+      </div>
+      <div class="bar-item">
+        <div class="indicator red"></div>
+        <span>1 Alert</span>
+      </div>
+      
+      <div class="geofence-list">
+        <span class="geo-chip active">Safe Zone Alpha</span>
+        <span class="geo-chip active">Restricted Area</span>
+        <span class="geo-chip">Perimeter Delta</span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // Update UTC time
+    setInterval(() => {
+      const now = new Date();
+      document.getElementById('utc-time').textContent = 
+        now.toUTCString().split(' ')[4];
+    }, 1000);
+
+    // Initialize map
+    const map = L.map('neon-map', {
+      zoomControl: false
+    }).setView([40.7128, -74.006], 11);
+
+    // Dark tiles
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      subdomains: 'abcd',
+      maxZoom: 19
+    }).addTo(map);
+
+    // Neon markers
+    const neonIcon = (color) => L.divIcon({
+      className: 'neon-marker',
+      html: `<div style="
+        width: 10px;
+        height: 10px;
+        background: ${color};
+        border-radius: 2px;
+        box-shadow: 0 0 8px ${color}, 0 0 16px ${color}, 0 0 24px ${color};
+      "></div>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
+    });
+
+    L.marker([40.7128, -74.006], { icon: neonIcon('#00ff66') }).addTo(map);
+    L.marker([34.0522, -118.2437], { icon: neonIcon('#f0ff00') }).addTo(map);
+    L.marker([51.5074, -0.1278], { icon: neonIcon('#ff00aa') }).addTo(map);
+
+    // Device selection
+    document.querySelectorAll('.device-row').forEach(row => {
+      row.addEventListener('click', () => {
+        document.querySelectorAll('.device-row').forEach(r => r.classList.remove('active'));
+        row.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

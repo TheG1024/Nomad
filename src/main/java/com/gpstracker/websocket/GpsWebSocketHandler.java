@@ -26,7 +26,7 @@ public class GpsWebSocketHandler extends TextWebSocketHandler {
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
     private final Map<String, String> sessionToDeviceId = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper;
-    
+
     @Autowired
     private GpsDataService gpsDataService;
 
@@ -41,12 +41,11 @@ public class GpsWebSocketHandler extends TextWebSocketHandler {
         String sessionId = session.getId();
         log.info("New WebSocket connection established. Session ID: {}", sessionId);
         sessions.put(sessionId, session);
-        
+
         // Send welcome message
         sendMessage(session, Map.of(
-            "type", "welcome",
-            "message", "Connection established. Please send device ID."
-        ));
+                "type", "welcome",
+                "message", "Connection established. Please send device ID."));
     }
 
     @Override
@@ -59,13 +58,14 @@ public class GpsWebSocketHandler extends TextWebSocketHandler {
             HashMap<?, ?> value = objectMapper.readValue(messagePayload, HashMap.class);
 
             String deviceId = (String) value.get("deviceId");
-            Double latitude = value.containsKey("latitude") ? Double.parseDouble(value.get("latitude").toString()) : null;
-            Double longitude = value.containsKey("longitude") ? Double.parseDouble(value.get("longitude").toString()) : null;
+            Double latitude = value.containsKey("latitude") ? Double.parseDouble(value.get("latitude").toString())
+                    : null;
+            Double longitude = value.containsKey("longitude") ? Double.parseDouble(value.get("longitude").toString())
+                    : null;
             Double speed = value.containsKey("speed") ? Double.parseDouble(value.get("speed").toString()) : null;
             Double heading = value.containsKey("heading") ? Double.parseDouble(value.get("heading").toString()) : null;
             String timestampString = (String) value.get("timestamp");
             String additionalInfo = (String) value.get("additionalInfo");
-
 
             GpsData gpsData = GpsData.builder()
                     .deviceId(deviceId)
@@ -77,9 +77,8 @@ public class GpsWebSocketHandler extends TextWebSocketHandler {
                     .additionalInfo(additionalInfo)
                     .build();
 
-
             String sessionId = session.getId();
-            
+
             // Handle heartbeat messages
             if (value.containsKey("type") && "heartbeat".equals(value.get("type"))) {
                 handleHeartbeat(session);
@@ -93,10 +92,9 @@ public class GpsWebSocketHandler extends TextWebSocketHandler {
                     sessionToDeviceId.put(sessionId, deviceId);
                     log.info("Device {} registered with session {}", deviceId, sessionId);
                     sendMessage(session, Map.of(
-                        "type", "registration",
-                        "status", "success",
-                        "deviceId", deviceId
-                    ));
+                            "type", "registration",
+                            "status", "success",
+                            "deviceId", deviceId));
                     return;
                 } else {
                     sendError(session, "Device ID not provided");
@@ -111,14 +109,12 @@ public class GpsWebSocketHandler extends TextWebSocketHandler {
                 return;
             }
 
-
             gpsDataService.saveGpsData(gpsData);
             sendMessage(session, Map.of(
-                "type", "ack",
-                "status", "received",
-                "timestamp", gpsData.getTimestamp().toString()
-            ));
-            
+                    "type", "ack",
+                    "status", "received",
+                    "timestamp", gpsData.getTimestamp().toString()));
+
             log.debug("Processed GPS data from device {}: {}", deviceId, gpsData);
 
         } catch (Exception e) {
@@ -129,16 +125,14 @@ public class GpsWebSocketHandler extends TextWebSocketHandler {
 
     private void handleHeartbeat(WebSocketSession session) {
         sendMessage(session, Map.of(
-            "type", "heartbeat",
-            "status", "received"
-        ));
+                "type", "heartbeat",
+                "status", "received"));
     }
 
     private void sendError(WebSocketSession session, String message) {
         sendMessage(session, Map.of(
-            "type", "error",
-            "message", message
-        ));
+                "type", "error",
+                "message", message));
     }
 
     private void sendMessage(WebSocketSession session, Map<String, Object> message) {

@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nomad - Cyber Terminal</title>
+  <link rel="stylesheet" href="/vendor/css/leaflet.css" />
+  <script src="/vendor/js/leaflet.js"></script>
+  <style>
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #111111;
+      --bg-tertiary: #1a1a1a;
+      --bg-card: #141414;
+      --accent-primary: #00ff88;
+      --accent-secondary: #00cc6a;
+      --accent-glow: rgba(0, 255, 136, 0.3);
+      --warning: #ffaa00;
+      --danger: #ff3366;
+      --text-primary: #e0e0e0;
+      --text-secondary: #888888;
+      --text-muted: #555555;
+      --border: #2a2a2a;
+      --terminal-green: #00ff88;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Scanline overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.1) 2px,
+        rgba(0, 0, 0, 0.1) 4px
+      );
+      z-index: 9999;
+    }
+
+    /* Layout */
+    .dashboard {
+      display: grid;
+      grid-template-columns: 280px 1fr 320px;
+      grid-template-rows: 64px 1fr;
+      min-height: 100vh;
+      gap: 1px;
+      background: var(--border);
+    }
+
+    /* Header */
+    .header {
+      grid-column: 1 / -1;
+      background: var(--bg-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--accent-primary);
+    }
+
+    .logo {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: var(--accent-primary);
+      letter-spacing: 4px;
+      text-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .logo span {
+      color: var(--text-secondary);
+    }
+
+    .header-controls {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-primary);
+      box-shadow: 0 0 10px var(--accent-primary);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .search-box {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 0.85rem;
+      width: 240px;
+      transition: all 0.3s;
+    }
+
+    .search-box:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    /* Sidebar */
+    .sidebar {
+      background: var(--bg-secondary);
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .sidebar-section {
+      margin-bottom: 32px;
+    }
+
+    .sidebar-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .device-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .device-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .device-item::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--accent-primary);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .device-item:hover, .device-item.active {
+      border-color: var(--accent-primary);
+    }
+
+    .device-item:hover::before, .device-item.active::before {
+      opacity: 1;
+    }
+
+    .device-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .device-status {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+    }
+
+    .device-status.online { color: var(--accent-primary); }
+    .device-status.warning { color: var(--warning); }
+    .device-status.offline { color: var(--danger); }
+
+    /* Main content - Map */
+    .main-content {
+      background: var(--bg-primary);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .map-container {
+      width: 100%;
+      height: 100%;
+    }
+
+    #cyber-map {
+      width: 100%;
+      height: 100%;
+      background: var(--bg-primary);
+    }
+
+    .leaflet-container {
+      background: var(--bg-primary);
+    }
+
+    /* Map overlay stats */
+    .map-overlay {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 1000;
+      display: flex;
+      gap: 12px;
+    }
+
+    .stat-badge {
+      background: rgba(10, 10, 10, 0.9);
+      border: 1px solid var(--accent-primary);
+      padding: 12px 20px;
+      backdrop-filter: blur(10px);
+    }
+
+    .stat-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent-primary);
+      text-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    .stat-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+
+    /* Right panel */
+    .right-panel {
+      background: var(--bg-secondary);
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .panel-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    .panel-header {
+      background: var(--bg-tertiary);
+      padding: 12px 16px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent-primary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-body {
+      padding: 16px;
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .metric-row:last-child {
+      border-bottom: none;
+    }
+
+    .metric-label {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .metric-value {
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .metric-value.warning { color: var(--warning); }
+    .metric-value.danger { color: var(--danger); }
+
+    /* Battery bar */
+    .battery-bar {
+      height: 6px;
+      background: var(--bg-tertiary);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .battery-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+      border-radius: 3px;
+      transition: width 0.5s;
+    }
+
+    .battery-fill.low { background: var(--warning); }
+    .battery-fill.critical { background: var(--danger); }
+
+    /* Geofence list */
+    .geofence-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .geofence-item:last-child {
+      border-bottom: none;
+    }
+
+    .geofence-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      margin-right: 12px;
+    }
+
+    .geofence-name {
+      font-size: 0.8rem;
+      flex: 1;
+    }
+
+    .geofence-toggle {
+      width: 36px;
+      height: 20px;
+      background: var(--bg-tertiary);
+      border-radius: 10px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .geofence-toggle.active {
+      background: var(--accent-primary);
+    }
+
+    .geofence-toggle::after {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      background: var(--text-primary);
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.3s;
+    }
+
+    .geofence-toggle.active::after {
+      transform: translateX(16px);
+    }
+
+    /* Terminal output */
+    .terminal-output {
+      background: #000;
+      border: 1px solid var(--border);
+      padding: 12px;
+      font-size: 0.7rem;
+      height: 150px;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .terminal-line {
+      margin-bottom: 4px;
+    }
+
+    .terminal-line .time {
+      color: var(--text-muted);
+    }
+
+    .terminal-line .cmd {
+      color: var(--accent-primary);
+    }
+
+    .terminal-line .msg {
+      color: var(--text-secondary);
+    }
+
+    /* Quick actions */
+    .quick-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .action-btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 12px;
+      font-family: inherit;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .action-btn:hover {
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+    }
+
+    .action-btn.primary {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      color: var(--bg-primary);
+      font-weight: 600;
+    }
+
+    .action-btn.primary:hover {
+      background: var(--accent-secondary);
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+        grid-template-rows: 64px auto 1fr auto;
+      }
+      
+      .sidebar, .right-panel {
+        max-height: 200px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">NOMAD<span>_TRACKER</span></div>
+      <div class="header-controls">
+        <div class="status-indicator">
+          <div class="status-dot"></div>
+          <span>SYSTEMS ONLINE</span>
+        </div>
+        <input type="text" class="search-box" placeholder="Search devices...">
+      </div>
+    </header>
+
+    <!-- Sidebar - Device List -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-title">Active Devices</div>
+        <div class="device-list">
+          <div class="device-item active">
+            <div class="device-name">Vehicle Alpha</div>
+            <div class="device-status">
+              <span>Online</span>
+              <span>78% batt</span>
+            </div>
+          </div>
+          <div class="device-item">
+            <div class="device-name">Drone Beta</div>
+            <div class="device-status warning">
+              <span>Warning</span>
+              <span>23% batt</span>
+            </div>
+          </div>
+          <div class="device-item">
+            <div class="device-name">Tracker Gamma</div>
+            <div class="device-status offline">
+              <span>Offline</span>
+              <span>0% batt</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-title">Quick Actions</div>
+        <div class="quick-actions">
+          <button class="action-btn">+ Add Device</button>
+          <button class="action-btn">+ New Zone</button>
+          <button class="action-btn">Export</button>
+          <button class="action-btn primary">Refresh</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Map -->
+    <main class="main-content">
+      <div class="map-overlay">
+        <div class="stat-badge">
+          <div class="stat-value">3</div>
+          <div class="stat-label">Devices</div>
+        </div>
+        <div class="stat-badge">
+          <div class="stat-value">2</div>
+          <div class="stat-label">Active Zones</div>
+        </div>
+        <div class="stat-badge">
+          <div class="stat-value">99.9%</div>
+          <div class="stat-label">Uptime</div>
+        </div>
+      </div>
+      <div class="map-container">
+        <div id="cyber-map"></div>
+      </div>
+    </main>
+
+    <!-- Right Panel -->
+    <aside class="right-panel">
+      <div class="panel-card">
+        <div class="panel-header">Device Details</div>
+        <div class="panel-body">
+          <div class="metric-row">
+            <span class="metric-label">Name</span>
+            <span class="metric-value">Vehicle Alpha</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Status</span>
+            <span class="metric-value" style="color: var(--accent-primary)">Online</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Speed</span>
+            <span class="metric-value">28 km/h</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Direction</span>
+            <span class="metric-value">NE</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Battery</span>
+            <span class="metric-value">78%</span>
+          </div>
+          <div class="battery-bar">
+            <div class="battery-fill" style="width: 78%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-header">Active Police Alerts: <span id="alert-count" style="color: #ff3366;">0</span></div>
+        <div class="panel-body" style="text-align: center; padding: 20px;">
+          <div style="font-size: 0.7rem; color: #888;">Loading alerts...</div>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-header">Geofences</div>
+        <div class="panel-body">
+          <div class="geofence-item">
+            <div class="geofence-color" style="background: #00ffff"></div>
+            <span class="geofence-name">Safe Zone Alpha</span>
+            <div class="geofence-toggle active"></div>
+          </div>
+          <div class="geofence-item">
+            <div class="geofence-color" style="background: #ff00ff"></div>
+            <span class="geofence-name">Restricted Area</span>
+            <div class="geofence-toggle active"></div>
+          </div>
+          <div class="geofence-item">
+            <div class="geofence-color" style="background: #ffff00"></div>
+            <span class="geofence-name">Perimeter Delta</span>
+            <div class="geofence-toggle"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-header">Device Details</div>
+        <div class="panel-body">
+          <div class="terminal-output">
+            <div class="terminal-line">
+              <span class="time">[10:42:01]</span>
+              <span class="cmd"> SYSTEM:</span>
+              <span class="msg"> Connected to Vehicle Alpha</span>
+            </div>
+            <div class="terminal-line">
+              <span class="time">[10:42:02]</span>
+              <span class="cmd"> GPS:</span>
+              <span class="msg"> Signal acquired - 12 satellites</span>
+            </div>
+            <div class="terminal-line">
+              <span class="time">[10:42:05]</span>
+              <span class="cmd"> GEOFENCE:</span>
+              <span class="msg"> Entered Safe Zone Alpha</span>
+            </div>
+            <div class="terminal-line">
+              <span class="time">[10:42:15]</span>
+              <span class="cmd"> ALERT:</span>
+              <span class="msg"> Drone Beta battery low</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    // Initialize Leaflet map
+    const map = L.map('cyber-map', {
+      zoomControl: false
+    }).setView([40.7128, -74.006], 13);
+
+    // Dark map tiles
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap © CARTO',
+      subdomains: 'abcd',
+      maxZoom: 19
+    }).addTo(map);
+
+    // Custom marker icons
+    const createIcon = (color, pulse = false) => {
+      return L.divIcon({
+        className: 'custom-marker',
+        html: `<div style="
+          width: 16px;
+          height: 16px;
+          background: ${color};
+          border-radius: 50%;
+          box-shadow: 0 0 10px ${color}, 0 0 20px ${color};
+          ${pulse ? 'animation: pulse 1s infinite;' : ''}
+        "></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+      });
+    };
+
+    // Device markers
+    L.marker([40.7128, -74.006], { icon: createIcon('#00ff88') }).addTo(map);
+    L.marker([34.0522, -118.2437], { icon: createIcon('#ffaa00', true) }).addTo(map);
+    L.marker([51.5074, -0.1278], { icon: createIcon('#ff3366') }).addTo(map);
+
+    // Add geoJSON layer placeholders
+    L.geoJSON({
+      type: 'Polygon',
+      coordinates: [[
+        [40.71, -74.01],
+        [40.71, -74.00],
+        [40.72, -74.00],
+        [40.72, -74.01],
+        [40.71, -74.01]
+      ]]
+    }, {
+      style: { color: '#00ffff', fillColor: '#00ffff', fillOpacity: 0.1, weight: 2 }
+    }).addTo(map);
+
+    // Toggle geofence switches
+    document.querySelectorAll('.geofence-toggle').forEach(toggle => {
+      toggle.addEventListener('click', () => {
+        toggle.classList.toggle('active');
+      });
+    });
+
+    // Device item click
+    document.querySelectorAll('.device-item').forEach(item => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.device-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+      });
+    });
+  </script>
+
+  <!-- SockJS and STOMP for WebSockets -->
+  <script src="/vendor/js/sockjs.min.js"></script>
+  <script src="/vendor/js/stomp.min.js"></script>
+  
+  <script>
+    // Police Alerts Integration
+    let policeAlertsLayer = null;
+    const alertColors = { 'LOW': '#00ff88', 'MEDIUM': '#ffaa00', 'HIGH': '#ff6600', 'CRITICAL': '#ff3366' };
+    
+    function addPoliceAlertToMap(alert) {
+      if (!window.cyberMap || !policeAlertsLayer) return;
+      
+      const color = alertColors[alert.severity] || '#ff3366';
+      
+      // Alert circle
+      L.circle([alert.latitude, alert.longitude], {
+        color: color, fillColor: color, fillOpacity: 0.2, radius: alert.radius || 500
+      }).addTo(policeAlertsLayer);
+      
+      // Alert marker with pulse
+      const alertIcon = L.divIcon({
+        className: 'alert-marker',
+        html: '<div style="width:16px;height:16px;background:'+color+';border:2px solid #fff;border-radius:50%;box-shadow:0 0 10px '+color+';"></div>',
+        iconSize: [16, 16], iconAnchor: [8, 8]
+      });
+      
+      L.marker([alert.latitude, alert.longitude], { icon: alertIcon })
+        .addTo(policeAlertsLayer)
+        .bindPopup('<b style="color:'+color+'">'+alert.name+'</b><br>'+alert.alertType+' | '+alert.severity+'<br>'+alert.description);
+    }
+    
+    // Fetch and display police alerts
+    function loadPoliceAlerts() {
+      fetch('/api/police-alerts/active', { headers: { 'Authorization': 'Basic ' + btoa('admin:admin') } })
+        .then(r => r.json())
+        .then(alerts => {
+          document.getElementById('alert-count').textContent = alerts.length;
+          alerts.forEach(addPoliceAlertToMap);
+        })
+        .catch(e => console.error('Failed to load police alerts:', e));
+    }
+    
+    // WebSocket connection
+    function connectWebSocket() {
+      try {
+        const socket = new SockJS('/ws');
+        const stompClient = Stomp.over(socket);
+        stompClient.debug = null;
+        stompClient.connect({}, (frame) => {
+          const statusDot = document.querySelector('.status-dot');
+          if (statusDot) statusDot.style.background = '#00ff88';
+          const statusText = document.querySelector('.status-dot')?.nextElementSibling;
+          if (statusText) statusText.textContent = 'SYSTEMS ONLINE';
+          
+          stompClient.subscribe('/topic/police-alerts', (msg) => {
+            try {
+              addPoliceAlertToMap(JSON.parse(msg.body));
+            } catch(e) {
+              console.error('Error processing police alert:', e);
+            }
+          });
+        }, (error) => {
+          console.warn('WebSocket connection failed (expected if no client connected):', error);
+        });
+      } catch(e) {
+        console.warn('WebSocket error:', e);
+      }
+    }
+    
+    // Initialize map with Leaflet
+    document.addEventListener('DOMContentLoaded', () => {
+      function initMap() {
+        if (typeof L === 'undefined') { setTimeout(initMap, 100); return; }
+        
+        try {
+          window.cyberMap = L.map('cyber-map', { zoomControl: false }).setView([40.7128, -74.0060], 12);
+          L.control.zoom({ position: 'bottomright' }).addTo(window.cyberMap);
+          
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap',
+            crossOrigin: true
+          }).addTo(window.cyberMap);
+          
+          policeAlertsLayer = L.layerGroup().addTo(window.cyberMap);
+          loadPoliceAlerts();
+          
+          // Defer WebSocket connection to improve page load
+          setTimeout(connectWebSocket, 1500);
+        } catch(e) {
+          console.error('Map initialization failed:', e);
+        }
+      }
+      initMap();
+    });
+  </script>
+</body>
+</html>

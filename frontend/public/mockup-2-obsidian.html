@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nomad - Obsidian Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    :root {
+      --bg-primary: #0d0d0d;
+      --bg-secondary: #141414;
+      --bg-elevated: #1a1a1a;
+      --surface: #1e1e1e;
+      --border: #2a2a2a;
+      --border-subtle: #222222;
+      --accent: #a78bfa;
+      --accent-muted: rgba(167, 139, 250, 0.2);
+      --accent-glow: rgba(167, 139, 250, 0.4);
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --text-primary: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-muted: #52525b;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    /* Dashboard layout */
+    .dashboard {
+      display: grid;
+      grid-template-columns: 260px 1fr 300px;
+      grid-template-rows: 72px 1fr;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      grid-column: 1 / -1;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+    }
+
+    .logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent), #818cf8);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-icon svg {
+      width: 20px;
+      height: 20px;
+      fill: white;
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 8px;
+    }
+
+    .nav-item {
+      padding: 10px 20px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .nav-item:hover {
+      color: var(--text-primary);
+      background: var(--surface);
+    }
+
+    .nav-item.active {
+      color: var(--text-primary);
+      background: var(--bg-elevated);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .icon-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), #818cf8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    /* Left sidebar */
+    .sidebar {
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border-subtle);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .sidebar-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+
+    .section-action {
+      font-size: 0.75rem;
+      color: var(--accent);
+      cursor: pointer;
+    }
+
+    .section-action:hover {
+      text-decoration: underline;
+    }
+
+    .device-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .device-card:hover {
+      border-color: var(--border);
+      transform: translateY(-2px);
+    }
+
+    .device-card.active {
+      border-color: var(--accent);
+      background: var(--accent-muted);
+    }
+
+    .device-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .device-name {
+      font-weight: 600;
+      font-size: 0.9375rem;
+    }
+
+    .device-badge {
+      font-size: 0.6875rem;
+      font-weight: 500;
+      padding: 4px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+
+    .device-badge.online {
+      background: rgba(52, 211, 153, 0.15);
+      color: var(--success);
+    }
+
+    .device-badge.warning {
+      background: rgba(251, 191, 36, 0.15);
+      color: var(--warning);
+    }
+
+    .device-badge.offline {
+      background: rgba(248, 113, 113, 0.15);
+      color: var(--danger);
+    }
+
+    .device-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .device-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .stat-value {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.8125rem;
+      font-weight: 500;
+    }
+
+    .stat-label {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+    }
+
+    /* Map area */
+    .map-area {
+      position: relative;
+      background: var(--bg-primary);
+    }
+
+    #obsidian-map {
+      width: 100%;
+      height: 100%;
+    }
+
+    .map-floating-panel {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .floating-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 20px;
+      min-width: 200px;
+      backdrop-filter: blur(20px);
+    }
+
+    .floating-card-title {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .floating-card-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .floating-card-value span {
+      font-size: 0.875rem;
+      font-weight: 400;
+      color: var(--text-secondary);
+    }
+
+    /* Right panel */
+    .right-panel {
+      background: var(--bg-secondary);
+      border-left: 1px solid var(--border-subtle);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+    }
+
+    .panel-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    .panel-body {
+      padding: 16px 20px;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+    }
+
+    .info-value {
+      font-size: 0.8125rem;
+      font-weight: 500;
+    }
+
+    /* Activity feed */
+    .activity-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .activity-item {
+      display: flex;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+
+    .activity-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+
+    .activity-dot.success { background: var(--success); }
+    .activity-dot.warning { background: var(--warning); }
+    .activity-dot.danger { background: var(--danger); }
+    .activity-dot.accent { background: var(--accent); }
+
+    .activity-content {
+      flex: 1;
+    }
+
+    .activity-text {
+      font-size: 0.8125rem;
+      margin-bottom: 2px;
+    }
+
+    .activity-time {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+    }
+
+    /* Progress ring */
+    .progress-ring-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .progress-ring {
+      position: relative;
+      width: 120px;
+      height: 120px;
+    }
+
+    .progress-ring svg {
+      transform: rotate(-90deg);
+    }
+
+    .progress-ring circle {
+      fill: none;
+      stroke-width: 8;
+    }
+
+    .progress-ring .bg {
+      stroke: var(--border);
+    }
+
+    .progress-ring .progress {
+      stroke: var(--accent);
+      stroke-linecap: round;
+      stroke-dasharray: 314;
+      stroke-dashoffset: 69;
+      transition: stroke-dashoffset 0.5s;
+    }
+
+    .progress-ring-value {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .progress-ring-value .value {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .progress-ring-value .label {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+    }
+
+    /* Action buttons */
+    .actions-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 16px 20px;
+    }
+
+    .action-btn {
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-secondary);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .action-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .action-btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+      grid-column: 1 / -1;
+    }
+
+    .action-btn.primary:hover {
+      background: #917efb;
+    }
+
+    /* Leaflet customizations */
+    .leaflet-container {
+      background: var(--bg-primary);
+    }
+
+    .leaflet-control-zoom {
+      border: none !important;
+    }
+
+    .leaflet-control-zoom a {
+      background: var(--bg-secondary) !important;
+      color: var(--text-primary) !important;
+      border: 1px solid var(--border) !important;
+    }
+
+    .leaflet-control-zoom a:hover {
+      background: var(--bg-elevated) !important;
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+        grid-template-rows: 72px auto 1fr auto;
+      }
+      
+      .sidebar, .right-panel {
+        max-height: 250px;
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+      
+      .sidebar-section {
+        flex: 1;
+        min-width: 200px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+        </div>
+        Nomad
+      </div>
+      
+      <nav class="header-nav">
+        <button class="nav-item active">Dashboard</button>
+        <button class="nav-item">Devices</button>
+        <button class="nav-item">Geofences</button>
+        <button class="nav-item">Analytics</button>
+      </nav>
+      
+      <div class="header-actions">
+        <button class="icon-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </button>
+        <button class="icon-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        </button>
+        <div class="user-avatar">N</div>
+      </div>
+    </header>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <div class="section-header">
+          <span class="section-title">Devices</span>
+          <span class="section-action">View All</span>
+        </div>
+        
+        <div class="device-card active">
+          <div class="device-header">
+            <span class="device-name">Vehicle Alpha</span>
+            <span class="device-badge online">Online</span>
+          </div>
+          <div class="device-stats">
+            <div class="device-stat">
+              <span class="stat-value">28 km/h</span>
+              <span class="stat-label">Speed</span>
+            </div>
+            <div class="device-stat">
+              <span class="stat-value">78%</span>
+              <span class="stat-label">Battery</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="device-card">
+          <div class="device-header">
+            <span class="device-name">Drone Beta</span>
+            <span class="device-badge warning">Warning</span>
+          </div>
+          <div class="device-stats">
+            <div class="device-stat">
+              <span class="stat-value">15 km/h</span>
+              <span class="stat-label">Speed</span>
+            </div>
+            <div class="device-stat">
+              <span class="stat-value">23%</span>
+              <span class="stat-label">Battery</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="device-card">
+          <div class="device-header">
+            <span class="device-name">Tracker Gamma</span>
+            <span class="device-badge offline">Offline</span>
+          </div>
+          <div class="device-stats">
+            <div class="device-stat">
+              <span class="stat-value">0 km/h</span>
+              <span class="stat-label">Speed</span>
+            </div>
+            <div class="device-stat">
+              <span class="stat-value">0%</span>
+              <span class="stat-label">Battery</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="sidebar-section">
+        <div class="section-header">
+          <span class="section-title">Quick Actions</span>
+        </div>
+        
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="action-btn" style="flex: 1; min-width: 100px;">+ Device</button>
+          <button class="action-btn" style="flex: 1; min-width: 100px;">+ Zone</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Map -->
+    <main class="map-area">
+      <div class="map-floating-panel">
+        <div class="floating-card">
+          <div class="floating-card-title">Total Devices</div>
+          <div class="floating-card-value">3 <span>/ 5</span></div>
+        </div>
+        <div class="floating-card">
+          <div class="floating-card-title">Active Zones</div>
+          <div class="floating-card-value">2 <span>/ 4</span></div>
+        </div>
+      </div>
+      <div id="obsidian-map"></div>
+    </main>
+
+    <!-- Right Panel -->
+    <aside class="right-panel">
+      <div class="panel-card">
+        <div class="panel-header">
+          <span class="panel-title">Device Health</span>
+        </div>
+        <div class="progress-ring-container">
+          <div class="progress-ring">
+            <svg width="120" height="120">
+              <circle class="bg" cx="60" cy="60" r="50"/>
+              <circle class="progress" cx="60" cy="60" r="50"/>
+            </svg>
+            <div class="progress-ring-value">
+              <div class="value">78%</div>
+              <div class="label">Healthy</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="panel-card">
+        <div class="panel-header">
+          <span class="panel-title">Details</span>
+        </div>
+        <div class="panel-body">
+          <div class="info-row">
+            <span class="info-label">Device ID</span>
+            <span class="info-value">DEV-001</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Driver</span>
+            <span class="info-value">John Smith</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Last Update</span>
+            <span class="info-value">Just now</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Location</span>
+            <span class="info-value">40.71, -74.01</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="panel-card">
+        <div class="panel-header">
+          <span class="panel-title">Recent Activity</span>
+        </div>
+        <div class="panel-body">
+          <div class="activity-list">
+            <div class="activity-item">
+              <div class="activity-dot success"></div>
+              <div class="activity-content">
+                <div class="activity-text">Vehicle Alpha connected</div>
+                <div class="activity-time">2 minutes ago</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot accent"></div>
+              <div class="activity-content">
+                <div class="activity-text">Entered Safe Zone Alpha</div>
+                <div class="activity-time">5 minutes ago</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot warning"></div>
+              <div class="activity-content">
+                <div class="activity-text">Drone Beta battery low</div>
+                <div class="activity-time">12 minutes ago</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot danger"></div>
+              <div class="activity-content">
+                <div class="activity-text">Tracker Gamma went offline</div>
+                <div class="activity-time">2 hours ago</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="panel-card">
+        <div class="actions-grid">
+          <button class="action-btn">Settings</button>
+          <button class="action-btn">Export</button>
+          <button class="action-btn primary">View Details</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    // Initialize map
+    const map = L.map('obsidian-map', {
+      zoomControl: true,
+      attributionControl: false
+    }).setView([40.7128, -74.006], 12);
+
+    // Dark tiles
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      subdomains: 'abcd',
+      maxZoom: 19
+    }).addTo(map);
+
+    // Custom markers
+    const createMarker = (color) => {
+      return L.divIcon({
+        className: 'marker',
+        html: `<div style="
+          width: 12px;
+          height: 12px;
+          background: ${color};
+          border-radius: 50%;
+          box-shadow: 0 0 0 4px rgba(0,0,0,0.3), 0 0 12px ${color};
+        "></div>`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+      });
+    };
+
+    // Add markers
+    L.marker([40.7128, -74.006], { icon: createMarker('#34d399') }).addTo(map);
+    L.marker([34.0522, -118.2437], { icon: createMarker('#fbbf24') }).addTo(map);
+    L.marker([51.5074, -0.1278], { icon: createMarker('#f87171') }).addTo(map);
+
+    // Device selection
+    document.querySelectorAll('.device-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.device-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

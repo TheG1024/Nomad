@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberTrack GPS - Nomad</title>
+    <link rel="stylesheet" href="/css/cyber-tracker.css">
+    <link rel="stylesheet" href="/vendor/css/fontawesome.min.css">
+    <link rel="stylesheet" href="/vendor/css/leaflet.css" />
+    <script src="/vendor/js/leaflet.js" defer></script>
+    <script src="/vendor/js/react.production.min.js"></script>
+    <script src="/vendor/js/react-dom.production.min.js"></script>
+    <script src="/vendor/js/sockjs.min.js"></script>
+    <script src="/vendor/js/stomp.min.js"></script>
+    <script src="/vendor/js/anime.min.js" defer></script>
+    <script src="/vendor/js/babel.min.js"></script>
+    <script src="/js/cyber-icons.js"></script>
+</head>
+<body style="background-color: #121212; color: white; margin: 0; padding: 20px; font-family: 'Rajdhani', sans-serif;">
+    <div class="container" style="max-width: 1200px; margin: 0 auto;">
+        <header style="margin-bottom: 20px;">
+            <h1 style="color: #00ffff; font-family: 'Orbitron', sans-serif; text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);">
+                NOMAD GPS TRACKING SYSTEM
+            </h1>
+            <p style="color: rgba(255, 255, 255, 0.7);">Embedded Mode | Cyberpunk Dashboard</p>
+        </header>
+        
+        <!-- Tab Navigation -->
+        <div class="cyber-tabs" style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <button id="tab-map" class="cyber-tab active" onclick="switchTab('map')">Map</button>
+            <button id="tab-devices" class="cyber-tab" onclick="switchTab('devices')">Devices</button>
+            <button id="tab-alerts" class="cyber-tab" onclick="switchTab('alerts')">Police Alerts</button>
+            <button id="tab-commands" class="cyber-tab" onclick="switchTab('commands')">Commands</button>
+        </div>
+        
+        <!-- Map Panel -->
+        <div id="panel-map" class="cyber-panel" style="display: block;">
+            <div id="cyber-map" style="height: 500px; background: #000; border: 2px solid #00ffff;"></div>
+        </div>
+        
+        <!-- Devices Panel -->
+        <div id="panel-devices" class="cyber-panel" style="display: none;">
+            <div style="padding: 20px; color: #00ffff;">Device list loading...</div>
+        </div>
+        
+        <!-- Police Alerts Panel -->
+        <div id="panel-alerts" class="cyber-panel" style="display: none;">
+            <div style="padding: 15px; background: #1a1a1a; border: 1px solid #ff6600;">
+                <h3 style="color: #ff6600; margin: 0 0 15px 0;">Active Police Alerts: <span id="alert-count">0</span></h3>
+                <div id="alerts-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+            </div>
+        </div>
+        
+        <!-- Commands Panel -->
+        <div id="panel-commands" class="cyber-panel" style="display: none;">
+            <div style="padding: 20px; color: #00ffff;">Command Center ready</div>
+        </div>
+        
+        <div id="notifications-area" style="position: fixed; top: 20px; right: 20px; width: 300px; z-index: 9999;"></div>
+        
+        <footer style="margin-top: 20px; color: rgba(255, 255, 255, 0.5); font-size: 0.8rem; text-align: center;">
+            <p>&copy; 2025 Nomad GPS Tracking System | Running in Embedded Mode</p>
+        </footer>
+    </div>
+    
+    <script>
+        // Tab switching
+        window.switchTab = function(tabName) {
+            document.querySelectorAll('.cyber-panel').forEach(p => p.style.display = 'none');
+            document.querySelectorAll('.cyber-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('panel-' + tabName).style.display = 'block';
+            document.getElementById('tab-' + tabName).classList.add('active');
+            
+            if (tabName === 'map' && window.cyberMap) {
+                window.cyberMap.invalidateSize();
+            }
+        };
+        
+        // Notification Manager
+        class NotificationManager {
+            constructor(containerId) {
+                this.container = document.getElementById(containerId);
+                this.notifications = [];
+                this.maxNotifications = 5;
+            }
+            addNotification(type, message) {
+                const id = 'notification-' + Date.now();
+                const notificationEl = document.createElement('div');
+                notificationEl.className = 'cyber-notification ' + type.toLowerCase();
+                notificationEl.innerHTML = `
+                    <div class="notification-icon"><i class="fa ${this.getIconForType(type)}"></i></div>
+                    <div class="notification-content">
+                        <div class="notification-title">${this.getTitleForType(type)}</div>
+                        <div class="notification-message">${message}</div>
+                    </div>
+                    <button class="notification-close" onclick="notificationManager.removeNotification('${id}')">
+                        <i class="fa fa-times"></i>
+                    </button>`;
+                notificationEl.style.opacity = '0';
+                notificationEl.style.transform = 'translateX(100%)';
+                this.container.appendChild(notificationEl);
+                setTimeout(() => {
+                    notificationEl.style.opacity = '1';
+                    notificationEl.style.transform = 'translateX(0)';
+                }, 10);
+                this.notifications.push({ id, element: notificationEl, timeout: setTimeout(() => { this.removeNotification(id); }, 6000) });
+                this.enforceMaxNotifications();
+                return id;
+            }
+            removeNotification(id) {
+                const idx = this.notifications.findIndex(n => n.id === id);
+                if (idx === -1) return;
+                const n = this.notifications[idx];
+                if (n.timeout) clearTimeout(n.timeout);
+                n.element.style.opacity = '0';
+                n.element.style.transform = 'translateX(100%)';
+                setTimeout(() => { if (n.element.parentNode) n.element.parentNode.removeChild(n.element); }, 300);
+                this.notifications.splice(idx, 1);
+            }
+            enforceMaxNotifications() {
+                while (this.notifications.length > this.maxNotifications) {
+                    this.removeNotification(this.notifications[0].id);
+                }
+            }
+            getIconForType(type) {
+                const icons = { ERROR: 'fa-exclamation-circle', WARNING: 'fa-exclamation-triangle', SUCCESS: 'fa-check-circle' };
+                return icons[type] || 'fa-info-circle';
+            }
+            getTitleForType(type) {
+                const titles = { ERROR: 'Error', WARNING: 'Warning', SUCCESS: 'Success' };
+                return titles[type] || 'Information';
+            }
+        }
+        const notificationManager = new NotificationManager('notifications-area');
+
+        // WebSocket Client
+        class WebSocketClient {
+            constructor() {
+                this.connected = false;
+                this.stompClient = null;
+                this.policeAlerts = [];
+            }
+            connect() {
+                const socket = new SockJS('/ws');
+                this.stompClient = Stomp.over(socket);
+                this.stompClient.debug = null;
+                this.stompClient.connect({}, (frame) => {
+                    this.connected = true;
+                    notificationManager.addNotification('SUCCESS', 'Connected to real-time updates');
+                    
+                    this.stompClient.subscribe('/topic/police-alerts', (message) => {
+                        const alert = JSON.parse(message.body);
+                        this.handlePoliceAlert(alert);
+                    });
+                    
+                    this.stompClient.subscribe('/topic/notifications', (message) => {
+                        const notif = JSON.parse(message.body);
+                        if (notif.type && notif.type.startsWith('POLICE_ALERT')) {
+                            notificationManager.addNotification(notif.severity === 'CRITICAL' ? 'ERROR' : 'WARNING', notif.message || 'Police alert received');
+                        }
+                    });
+                }, (err) => {
+                    this.connected = false;
+                    console.error('WS Error:', err);
+                });
+            }
+            handlePoliceAlert(alert) {
+                this.policeAlerts.push(alert);
+                if (window.cyberMap && typeof window.addPoliceAlertToMap === 'function') {
+                    window.addPoliceAlertToMap(alert);
+                }
+                updateAlertsList();
+                console.log('New police alert:', alert.name);
+            }
+        }
+        const wsClient = new WebSocketClient();
+        
+        // Function to add police alert to map
+        window.addPoliceAlertToMap = function(alert) {
+            if (!window.cyberMap || !window.policeAlertsLayer) return;
+            
+            const colors = { 'LOW': '#00ff88', 'MEDIUM': '#ffaa00', 'HIGH': '#ff6600', 'CRITICAL': '#ff0000' };
+            const color = colors[alert.severity] || '#ff0000';
+            
+            // Alert circle
+            L.circle([alert.latitude, alert.longitude], {
+                color: color, fillColor: color, fillOpacity: 0.2, radius: alert.radius || 500
+            }).addTo(window.policeAlertsLayer);
+            
+            // Alert icon
+            const alertIcon = L.divIcon({
+                className: 'alert-marker',
+                html: `<div style="width: 20px; height: 20px; background: ${color}; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 15px ${color}; animation: pulse 1.5s infinite;"></div>`,
+                iconSize: [20, 20], iconAnchor: [10, 10]
+            });
+            
+            L.marker([alert.latitude, alert.longitude], { icon: alertIcon })
+                .addTo(window.policeAlertsLayer)
+                .bindPopup(`<div style="min-width: 200px;">
+                    <h4 style="margin: 0 0 8px 0; color: ${color};">${alert.name}</h4>
+                    <p style="margin: 0 0 8px 0; font-size: 12px;"><strong>Type:</strong> ${alert.alertType}</p>
+                    <p style="margin: 0 0 8px 0; font-size: 12px;"><strong>Severity:</strong> ${alert.severity}</p>
+                    <p style="margin: 0; font-size: 11px;">${alert.description}</p>
+                    <p style="margin: 8px 0 0 0; font-size: 10px; color: #888;">Source: ${alert.source}</p>
+                </div>`);
+            
+            // Add pulse animation
+            if (!document.getElementById('alert-pulse-style')) {
+                const style = document.createElement('style');
+                style.id = 'alert-pulse-style';
+                style.textContent = '@keyframes pulse { 0% { box-shadow: 0 0 0 0 ' + color + '; } 70% { box-shadow: 0 0 0 10px rgba(0,0,0,0); } 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); } }';
+                document.head.appendChild(style);
+            }
+        };
+        
+        // Update alerts list panel
+        function updateAlertsList() {
+            fetch('/api/police-alerts/active', { headers: { 'Authorization': 'Basic ' + btoa('admin:admin') } })
+                .then(r => r.json())
+                .then(alerts => {
+                    document.getElementById('alert-count').textContent = alerts.length;
+                    const list = document.getElementById('alerts-list');
+                    list.innerHTML = '';
+                    const colors = { 'LOW': '#00ff88', 'MEDIUM': '#ffaa00', 'HIGH': '#ff6600', 'CRITICAL': '#ff0000' };
+                    alerts.forEach(alert => {
+                        const color = colors[alert.severity] || '#ff0000';
+                        list.innerHTML += `
+                            <div style="padding: 10px; background: #222; border-left: 3px solid ${color};">
+                                <div style="color: ${color}; font-weight: bold;">${alert.name}</div>
+                                <div style="font-size: 12px; color: #888;">${alert.alertType} | ${alert.severity}</div>
+                                <div style="font-size: 11px; margin-top: 5px;">${alert.description}</div>
+                            </div>`;
+                    });
+                });
+        }
+        
+        // Initialize map
+        document.addEventListener('DOMContentLoaded', function() {
+            // Connect WebSocket after DOM loads
+            setTimeout(() => wsClient.connect(), 1000);
+            
+            // Initialize Leaflet map when available
+            function initMap() {
+                const mapContainer = document.getElementById('cyber-map');
+                if (!mapContainer || typeof L === 'undefined') {
+                    setTimeout(initMap, 100);
+                    return;
+                }
+                
+                window.cyberMap = L.map('cyber-map').setView([40.7128, -74.0060], 12);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(window.cyberMap);
+                
+                window.policeAlertsLayer = L.layerGroup().addTo(window.cyberMap);
+                
+                // Fetch and display police alerts
+                fetch('/api/police-alerts/active', { headers: { 'Authorization': 'Basic ' + btoa('admin:admin') } })
+                    .then(r => r.json())
+                    .then(alerts => {
+                        console.log('Loaded', alerts.length, 'police alerts');
+                        alerts.forEach(alert => window.addPoliceAlertToMap(alert));
+                        updateAlertsList();
+                    })
+                    .catch(e => console.error('Failed to load police alerts:', e));
+                
+                console.log('Map initialized with police alerts');
+            }
+            
+            initMap();
+        });
+    </script>
+</body>
+</html>
