@@ -285,6 +285,15 @@ function showReportModal() {
     style.textContent = `
       @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
       @keyframes slideDown { from { transform: translate(-50%, -60%); opacity: 0; } to { transform: translate(-50%, -50%); opacity: 1; } }
+      @keyframes slideUp { from { transform: translate(-50%, 40%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+      @keyframes pulse { 
+        0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px #00f5ff); }
+        50% { transform: scale(1.05); filter: drop-shadow(0 0 40px #00f5ff); }
+      }
+      @keyframes scan { 
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+      }
     `;
     document.head.appendChild(style);
   }
@@ -710,153 +719,413 @@ function showPairingModal() {
   modal.id = 'pairing-modal';
   modal.style.cssText = `
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     z-index: 999999;
-    animation: slideDown 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    animation: fadeIn 0.3s ease-out;
   `;
   
+  // Tech Innovation theme: Bold neon cyan, geometric patterns, futuristic cyberpunk
   modal.innerHTML = `
     <div style="
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-      border: 2px solid #00ff88;
-      border-radius: 16px;
-      padding: 30px;
-      max-width: 500px;
-      width: 90%;
-      color: #fff;
-      box-shadow: 0 4px 40px rgba(0,255,136,0.4), 0 0 80px rgba(0,0,0,0.8);
-      font-family: 'JetBrains Mono', monospace;
       position: relative;
+      background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1428 100%);
+      border: 3px solid #00f5ff;
+      border-radius: 20px;
+      padding: 0;
+      max-width: 580px;
+      width: 90%;
+      box-shadow: 
+        0 0 60px rgba(0, 245, 255, 0.3),
+        inset 0 0 60px rgba(0, 245, 255, 0.05),
+        0 0 0 2px rgba(0, 245, 255, 0.1);
+      overflow: hidden;
+      font-family: 'Orbitron', 'Rajdhani', 'JetBrains Mono', monospace;
+      animation: slideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
     ">
-      <!-- Close button -->
-      <button onclick="closePairingModal()" style="
+      <!-- Animated grid background -->
+      <div style="
         position: absolute;
-        top: 15px;
-        right: 15px;
-        background: transparent;
-        border: none;
-        color: #888;
-        font-size: 24px;
-        cursor: pointer;
-        transition: all 0.2s;
-      " onmouseover="this.style.color='#ff4444'; this.style.transform='rotate(90deg)'" onmouseout="this.style.color='#888'; this.style.transform='rotate(0)'">✕</button>
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+          linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+        background-size: 40px 40px;
+        pointer-events: none;
+        z-index: 0;
+      "></div>
       
-      <!-- Header -->
-      <div style="text-align: center; margin-bottom: 25px;">
-        <div style="font-size: 48px; margin-bottom: 10px;">📡</div>
-        <h2 style="color: #00ff88; font-size: 24px; margin-bottom: 8px;">Pair Your Device</h2>
-        <p style="color: #888; font-size: 12px;">Track your phone, car, or any GPS device in real-time</p>
+      <!-- Glowing corner accents -->
+      <div style="
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        width: 40px;
+        height: 40px;
+        border-top: 4px solid #00f5ff;
+        border-left: 4px solid #00f5ff;
+        border-radius: 20px 0 0 0;
+        box-shadow: 0 0 20px #00f5ff;
+        z-index: 2;
+      "></div>
+      <div style="
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        width: 40px;
+        height: 40px;
+        border-top: 4px solid #00f5ff;
+        border-right: 4px solid #00f5ff;
+        border-radius: 0 20px 0 0;
+        box-shadow: 0 0 20px #00f5ff;
+        z-index: 2;
+      "></div>
+      <div style="
+        position: absolute;
+        bottom: -2px;
+        left: -2px;
+        width: 40px;
+        height: 40px;
+        border-bottom: 4px solid #00f5ff;
+        border-left: 4px solid #00f5ff;
+        border-radius: 0 0 0 20px;
+        box-shadow: 0 0 20px #00f5ff;
+        z-index: 2;
+      "></div>
+      <div style="
+        position: absolute;
+        bottom: -2px;
+        right: -2px;
+        width: 40px;
+        height: 40px;
+        border-bottom: 4px solid #00f5ff;
+        border-right: 4px solid #00f5ff;
+        border-radius: 0 0 20px 0;
+        box-shadow: 0 0 20px #00f5ff;
+        z-index: 2;
+      "></div>
+      
+      <!-- Content container -->
+      <div style="position: relative; z-index: 1;">
+        <!-- Header with animated icon -->
+        <div style="
+          text-align: center;
+          padding: 40px 40px 20px;
+          border-bottom: 2px solid rgba(0, 245, 255, 0.2);
+          background: linear-gradient(180deg, rgba(0, 245, 255, 0.05) 0%, transparent 100%);
+        ">
+          <div style="
+            font-size: 64px;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 0 20px #00f5ff);
+            animation: pulse 2s ease-in-out infinite;
+          ">📡</div>
+          <h2 style="
+            margin: 0;
+            font-size: 32px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #00f5ff 0%, #00d4ff 50%, #0099ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-shadow: 0 0 40px rgba(0, 245, 255, 0.5);
+          ">Pair Your Device</h2>
+          <p style="
+            margin: 15px 0 0;
+            font-size: 14px;
+            color: rgba(139, 195, 255, 0.8);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+          ">Track your phone, car, or any GPS device in real-time</p>
+        </div>
+        
+        <!-- Close button -->
+        <button 
+          onclick="closePairingModal()"
+          style="
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 245, 255, 0.1);
+            border: 2px solid rgba(0, 245, 255, 0.3);
+            border-radius: 50%;
+            color: #00f5ff;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            z-index: 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          "
+          onmouseover="
+            this.style.background = '#00f5ff';
+            this.style.color = '#0a0e27';
+            this.style.boxShadow = '0 0 20px #00f5ff';
+          "
+          onmouseout="
+            this.style.background = 'rgba(0, 245, 255, 0.1)';
+            this.style.color = '#00f5ff';
+            this.style.boxShadow = 'none';
+          "
+        >✕</button>
+        
+        <p style="color: #888; font-size: 12px; padding: 0 40px;">Track your phone, car, or any GPS device in real-time</p>
       </div>
       
       <!-- Step 1: Register -->
-      <div id="step1" style="margin-bottom: 20px;">
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+      <div id="step1" style="margin-bottom: 20px; padding: 30px 40px;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
           <div style="
-            background: #00ff88;
-            color: #000;
-            width: 28px;
-            height: 28px;
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #00f5ff, #0099ff);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
-            font-size: 14px;
+            color: #0a0e27;
+            font-weight: 900;
+            font-size: 16px;
+            box-shadow: 0 0 20px rgba(0, 245, 255, 0.4);
           ">1</div>
-          <h3 style="color: #fff; font-size: 16px; margin: 0;">Register Your Device</h3>
+          <h3 style="
+            color: #8bcfff;
+            font-size: 16px;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 700;
+          ">Register Your Device</h3>
         </div>
         
-        <input type="text" id="pair-device-name" placeholder="Device Name (e.g., 'My iPhone', 'Car Tracker')" style="
+        <input type="text" id="pair-device-name" placeholder="DEVICE IDENTIFIER" style="
           width: 100%;
-          padding: 14px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid #444;
-          border-radius: 8px;
-          color: #fff;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 14px;
-          margin-bottom: 15px;
+          padding: 16px 20px;
+          background: rgba(10, 14, 39, 0.8);
+          border: 2px solid rgba(0, 245, 255, 0.3);
+          border-radius: 10px;
+          color: #00f5ff;
+          font-family: 'Rajdhani', 'JetBrains Mono', monospace;
+          font-size: 16px;
+          font-weight: 600;
+          letter-spacing: 1px;
+          text-transform: uppercase;
           outline: none;
-          transition: all 0.2s;
-        " onfocus="this.style.borderColor='#00ff88'; this.style.boxShadow='0 0 15px rgba(0,255,136,0.3)'" onblur="this.style.borderColor='#444'; this.style.boxShadow='none'">
+          transition: all 0.3s;
+          box-sizing: border-box;
+        " onfocus="this.style.borderColor='#00f5ff'; this.style.boxShadow='0 0 30px rgba(0, 245, 255, 0.3)'" onblur="this.style.borderColor='rgba(0, 245, 255, 0.3)'; this.style.boxShadow='none'">
+        
+        <div style="margin-top: 25px; display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+          <div style="
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #00f5ff, #0099ff);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #0a0e27;
+            font-weight: 900;
+            font-size: 16px;
+            box-shadow: 0 0 20px rgba(0, 245, 255, 0.4);
+          ">2</div>
+          <h3 style="
+            color: #8bcfff;
+            font-size: 16px;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 700;
+          ">Device Classification</h3>
+        </div>
         
         <select id="pair-device-type" style="
           width: 100%;
-          padding: 14px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid #444;
-          border-radius: 8px;
-          color: #fff;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 14px;
-          margin-bottom: 20px;
+          padding: 16px 20px;
+          background: rgba(10, 14, 39, 0.8);
+          border: 2px solid rgba(0, 245, 255, 0.3);
+          border-radius: 10px;
+          color: #00f5ff;
+          font-family: 'Rajdhani', 'JetBrains Mono', monospace;
+          font-size: 16px;
+          font-weight: 600;
+          letter-spacing: 1px;
+          text-transform: uppercase;
           outline: none;
-          transition: all 0.2s;
           cursor: pointer;
-        " onfocus="this.style.borderColor='#00ff88'" onblur="this.style.borderColor='#444'">
-          <option value="mobile_app">📱 Mobile App (OwnTracks, GPS Logger)</option>
-          <option value="hardware_tracker">🔧 Hardware Tracker (TK103, GT06)</option>
-          <option value="custom_iot">🤖 Custom IoT (ESP32, Arduino)</option>
-          <option value="web_browser">🌐 This Web Browser</option>
-          <option value="other">📍 Other</option>
+          transition: all 0.3s;
+          box-sizing: border-box;
+        " onfocus="this.style.borderColor='#00f5ff'; this.style.boxShadow='0 0 30px rgba(0, 245, 255, 0.3)'" onblur="this.style.borderColor='rgba(0, 245, 255, 0.3)'; this.style.boxShadow='none'">
+          <option value="mobile_app" style="background: #0a0e27; color: #00f5ff;">📱 MOBILE APP (OwnTracks, GPS Logger)</option>
+          <option value="hardware_tracker" style="background: #0a0e27; color: #00f5ff;">🔧 HARDWARE TRACKER (TK103B, GT06)</option>
+          <option value="custom_iot" style="background: #0a0e27; color: #00f5ff;">🤖 IOT DEVICE (ESP32, Arduino)</option>
+          <option value="web_browser" style="background: #0a0e27; color: #00f5ff;">🌐 WEB BROWSER (Geolocation API)</option>
+          <option value="other" style="background: #0a0e27; color: #00f5ff;">📍 OTHER</option>
         </select>
         
         <button onclick="registerPairDevice()" style="
           width: 100%;
-          padding: 14px;
-          background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+          padding: 18px;
+          margin-top: 30px;
+          background: linear-gradient(135deg, #00f5ff 0%, #0099ff 100%);
           border: none;
-          border-radius: 8px;
-          color: #000;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 15px;
-          font-weight: bold;
+          border-radius: 10px;
+          color: #0a0e27;
+          font-family: 'Orbitron', 'Rajdhani', monospace;
+          font-size: 18px;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: 3px;
           cursor: pointer;
-          transition: all 0.2s;
-          box-shadow: 0 2px 12px rgba(0,255,136,0.4);
-        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 20px rgba(0,255,136,0.6)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 12px rgba(0,255,136,0.4)'">
-          ✨ Register Device
+          transition: all 0.3s;
+          box-shadow: 0 0 30px rgba(0, 245, 255, 0.4);
+          position: relative;
+          overflow: hidden;
+        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 0 50px rgba(0, 245, 255, 0.6)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 0 30px rgba(0, 245, 255, 0.4)'">
+          <span style="position: relative; z-index: 1;">✨ Initialize Pairing</span>
+          <div style="
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+          " onmouseover="this.style.left='100%'"></div>
         </button>
       </div>
       
       <!-- Step 2: Success & Location -->
-      <div id="step2" style="display: none;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <div style="font-size: 48px; margin-bottom: 10px;">✅</div>
-          <h3 style="color: #00ff88; font-size: 18px;">Device Registered!</h3>
-          <p style="color: #888; font-size: 12px; margin-top: 5px;">Now let's get your location</p>
+      <div id="step2" style="display: none; padding: 30px 40px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <div style="
+            font-size: 72px;
+            margin-bottom: 15px;
+            filter: drop-shadow(0 0 30px rgba(0, 245, 255, 0.5));
+            animation: pulse 1.5s ease-in-out infinite;
+          ">✅</div>
+          <h3 style="
+            color: #00f5ff;
+            font-size: 24px;
+            margin: 0 0 10px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-weight: 900;
+            text-shadow: 0 0 20px rgba(0, 245, 255, 0.4);
+          ">Device Registered!</h3>
+          <p style="
+            color: rgba(139, 195, 255, 0.8);
+            font-size: 14px;
+            margin: 0;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+          ">Now let's get your location</p>
         </div>
         
         <div style="
-          background: rgba(0,255,136,0.1);
-          border-left: 3px solid #00ff88;
-          padding: 15px;
-          border-radius: 6px;
-          margin-bottom: 20px;
-          font-size: 12px;
-          color: #00ff88;
-          font-family: monospace;
-          word-break: break-all;
+          background: rgba(0, 245, 255, 0.05);
+          border: 2px solid rgba(0, 245, 255, 0.3);
+          border-radius: 12px;
+          padding: 20px;
+          margin-bottom: 25px;
+          font-size: 13px;
+          color: #00f5ff;
+          font-family: 'Rajdhani', 'JetBrains Mono', monospace;
+          position: relative;
+          overflow: hidden;
         ">
-          <div style="color: #888; margin-bottom: 5px;">Device ID:</div>
-          <div id="device-id-display" style="margin-bottom: 10px;"></div>
-          <div style="color: #888; margin-bottom: 5px;">API Key:</div>
-          <div id="api-key-display"></div>
+          <div style="
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00f5ff, transparent);
+            animation: scan 2s linear infinite;
+          "></div>
+          <div style="color: rgba(139, 195, 255, 0.7); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; font-size: 11px;">Device ID</div>
+          <div id="device-id-display" style="
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(0, 245, 255, 0.08);
+            border-radius: 6px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+          "></div>
+          <div style="color: rgba(139, 195, 255, 0.7); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; font-size: 11px;">API Key</div>
+          <div id="api-key-display" style="
+            padding: 10px;
+            background: rgba(0, 245, 255, 0.08);
+            border-radius: 6px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+          "></div>
         </div>
         
         <button onclick="getLocationAndFinish()" style="
           width: 100%;
-          padding: 14px;
-          background: linear-gradient(135deg, #0088ff 0%, #0066cc 100%);
+          padding: 18px;
+          background: linear-gradient(135deg, #00f5ff 0%, #0099ff 100%);
           border: none;
-          border-radius: 8px;
-          color: #fff;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 15px;
-          font-weight: bold;
+          border-radius: 10px;
+          color: #0a0e27;
+          font-family: 'Orbitron', 'Rajdhani', monospace;
+          font-size: 18px;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: 3px;
           cursor: pointer;
+          transition: all 0.3s;
+          box-shadow: 0 0 30px rgba(0, 245, 255, 0.4);
+          position: relative;
+          overflow: hidden;
+          margin-bottom: 15px;
+        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 0 50px rgba(0, 245, 255, 0.6)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 0 30px rgba(0, 245, 255, 0.4)'">
+          <span style="position: relative; z-index: 1;">🛰️ Get My Location & Finish</span>
+          <div style="
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+          " onmouseover="this.style.left='100%'"></div>
+        </button>
+        
+        <button onclick="closePairingModal()" style="
+          width: 100%;
+          padding: 15px;
+          background: transparent;
+          border: 2px solid rgba(0, 245, 255, 0.3);
+          border-radius: 10px;
+          color: rgba(139, 195, 255, 0.8);
+          font-family: 'Rajdhani', 'JetBrains Mono', monospace;
+          font-size: 14px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 2px;
+          cursor: pointer;
+          transition: all 0.3s;
+        " onmouseover="this.style.borderColor='#00f5ff'; this.style.color='#00f5ff'; this.style.boxShadow='0 0 20px rgba(0, 245, 255, 0.2)'" onmouseout="this.style.borderColor='rgba(0, 245, 255, 0.3)'; this.style.color='rgba(139, 195, 255, 0.8)'; this.style.boxShadow='none'">
+          Done (I'll Send Location Later)
+        </button>
+      </div>
           transition: all 0.2s;
           box-shadow: 0 2px 12px rgba(0,136,255,0.4);
         " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 20px rgba(0,136,255,0.6)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 12px rgba(0,136,255,0.4)'">
