@@ -1,14 +1,6 @@
 services:
   - type: web
     name: nomad-gps
-    env: java
-    plan: free
-    buildCommand: mvn clean package -DskipTests
-    startCommand: java -jar target/nomad-gps-1.0.0.jar
-    envVars:
-      - key: SPRING_PROFILES_ACTIVE
-        value: embedded
-      - key: JAVA_VERSION
-        value: 21
+    dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
     autoDeploy: true
