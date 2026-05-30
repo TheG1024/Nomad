@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: nomad-gps
+    env: java
+    buildCommand: mvn clean package
+    startCommand: java -jar target/*.jar
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: embedded
+      - key: JAVA_VERSION
+        value: 21
+    healthCheckPath: /api/health
+    healthCheckInterval: 30s
+    disk:
+      name: logs
+      mountPath: /logs
+      sizeGB: 1
+    autoDeploy: true
