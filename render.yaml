@@ -1,10 +1,6 @@
 services:
   - type: web
     name: nomad-gps
-    dockerContext: .
-    dockerfilePath: ./Dockerfile
-    healthCheckPath: /api/health
-    autoDeploy: true
-    envVars:
-      - key: SPRING_PROFILES_ACTIVE
-        value: embedded
+    env: docker
+    dockerfilePath: Dockerfile
+    startCommand: java -jar app.jar
