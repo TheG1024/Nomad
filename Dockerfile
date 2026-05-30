@@ -9,8 +9,8 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
-# Install curl for health checks
-RUN apk --no-cache add curl
+# Install curl for health checks (Debian-based, not Alpine)
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
 # Copy the built jar
 COPY --from=builder /app/target/*.jar app.jar
