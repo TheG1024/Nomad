@@ -2,6 +2,7 @@ package com.gpstracker.controller;
 
 import com.gpstracker.dto.DeviceUpdateDTO;
 import com.gpstracker.dto.GeofenceEventDTO;
+import com.gpstracker.model.alert.UserReportedAlert;
 
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -142,5 +143,26 @@ public class WebSocketController {
             notification.put("timestamp", System.currentTimeMillis());
             messagingTemplate.convertAndSend("/topic/notifications", notification);
         }
+    }
+    
+    /**
+     * Broadcast a user-reported alert (Waze-style) to all clients
+     * @param alert the user-reported alert to broadcast
+     */
+    public void broadcastUserAlert(UserReportedAlert alert) {
+        log.info("Broadcasting user alert: {} - {} at ({}, {})", 
+            alert.getType(), alert.getSubtype(), alert.getLatitude(), alert.getLongitude());
+        messagingTemplate.convertAndSend("/topic/user-alerts", alert);
+    }
+    
+    /**
+     * Broadcast alert removal to all clients
+     * @param alertId the ID of the removed alert
+     */
+    public void broadcastAlertRemoved(String alertId) {
+        Map<String, Object> removal = new HashMap<>();
+        removal.put("alertId", alertId);
+        removal.put("action", "removed");
+        messagingTemplate.convertAndSend("/topic/user-alerts", removal);
     }
 } 
