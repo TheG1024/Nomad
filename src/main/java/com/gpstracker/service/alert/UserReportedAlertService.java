@@ -21,7 +21,7 @@ public class UserReportedAlertService {
     private static final String ALERTS_KEY_PREFIX = "nomad:alerts:";
     private static final int MAX_ALERTS_PER_AREA = 50;
     
-    @Autowired
+@Autowired(required = false)
     private RedisTemplate<String, Object> redisTemplate;
     
     @Autowired
@@ -161,6 +161,7 @@ public class UserReportedAlertService {
     }
     
     private void storeAlertInRedis(UserReportedAlert alert) {
+        if (redisTemplate == null) return;
         try {
             String key = ALERTS_KEY_PREFIX + alert.getId();
             redisTemplate.opsForHash().putAll(key, convertToMap(alert));
@@ -175,6 +176,7 @@ public class UserReportedAlertService {
     }
     
     private void removeFromRedis(UserReportedAlert alert) {
+        if (redisTemplate == null) return;
         try {
             String key = ALERTS_KEY_PREFIX + alert.getId();
             redisTemplate.delete(key);
