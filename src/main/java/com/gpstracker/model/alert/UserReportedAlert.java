@@ -56,7 +56,7 @@ public class UserReportedAlert {
         HAZARD_ON_SHOULDER,
         HAZARD_WEATHER,
         CAR_STOPPED,
-        ANIMAL_ON ROAD,
+        ANIMAL_ON_ROAD,
         TOLL_BOOTH,
         
         // Accident
