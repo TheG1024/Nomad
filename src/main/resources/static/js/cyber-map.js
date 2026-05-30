@@ -169,6 +169,13 @@ function showReportModal() {
   const modal = document.createElement('div');
   modal.id = 'report-modal';
   modal.className = 'modal';
+  modal.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 999999;
+  `;
   modal.innerHTML = `
     <div class="modal-content" style="
       background: #1a1a1a;
@@ -176,67 +183,87 @@ function showReportModal() {
       border-radius: 12px;
       padding: 20px;
       max-width: 400px;
-      margin: 100px auto;
+      margin: 0;
       color: #fff;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      box-shadow: 0 4px 30px rgba(0,255,136,0.3), 0 0 60px rgba(0,0,0,0.8);
+      font-family: 'JetBrains Mono', monospace;
     ">
-      <h3 style="margin-bottom: 15px; color: #00ff88;">📍 Report Incident</h3>
+      <h3 style="margin-bottom: 15px; color: #00ff88; font-size: 18px; display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 20px;">📍</span> Report Incident
+      </h3>
       
       <div style="margin-bottom: 15px;">
-        <label style="display: block; margin-bottom: 5px;">Type:</label>
+        <label style="display: block; margin-bottom: 5px; color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Type</label>
         <select id="alert-type" style="
           width: 100%;
-          padding: 8px;
+          padding: 12px;
           background: #2a2a2a;
-          border: 1px solid #444;
+          border: 1px solid #00ff88;
           border-radius: 6px;
           color: #fff;
-        ">
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 14px;
+          outline: none;
+          transition: all 0.2s;
+        " onfocus="this.style.borderColor='#00ff88'; this.style.boxShadow='0 0 15px rgba(0,255,136,0.3)'" onblur="this.style.borderColor='#444'; this.style.boxShadow='none'">
           <option value="POLICE">🚓 Police</option>
           <option value="HAZARD">⚠️ Hazard</option>
           <option value="ACCIDENT">💥 Accident</option>
-          <option value="TRAFFIC">🚗 Traffic</option>
+          <option value="TRAFFIC">🚗 Traffic Jam</option>
           <option value="ROAD_CLOSED">🚧 Road Closed</option>
           <option value="CONSTRUCTION">🏗️ Construction</option>
-          <option value="WEATHER">⛈️ Weather</option>
+          <option value="WEATHER">⛈️ Weather Hazard</option>
+          <option value="OTHER">📍 Other</option>
         </select>
       </div>
       
-      <div style="margin-bottom: 15px;">
-        <label style="display: block; margin-bottom: 5px;">Description:</label>
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 5px; color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Description</label>
         <input type="text" id="alert-description" placeholder="Brief description..." style="
           width: 100%;
-          padding: 8px;
+          padding: 12px;
           background: #2a2a2a;
           border: 1px solid #444;
           border-radius: 6px;
           color: #fff;
-        ">
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 14px;
+          outline: none;
+          transition: all 0.2s;
+        " onfocus="this.style.borderColor='#00ff88'; this.style.boxShadow='0 0 15px rgba(0,255,136,0.3)'" onblur="this.style.borderColor='#444'; this.style.boxShadow='none'">
       </div>
       
       <div style="display: flex; gap: 10px; justify-content: flex-end;">
         <button onclick="closeReportModal()" style="
-          padding: 8px 16px;
-          background: #444;
-          border: none;
+          padding: 10px 20px;
+          background: #333;
+          border: 1px solid #555;
           border-radius: 6px;
           color: #fff;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 14px;
+          font-weight: bold;
           cursor: pointer;
-        ">Cancel</button>
+          transition: all 0.2s;
+        " onmouseover="this.style.background='#444'" onmouseout="this.style.background='#333'">Cancel</button>
         <button onclick="submitAlert()" style="
-          padding: 8px 16px;
-          background: #00ff88;
+          padding: 10px 20px;
+          background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
           border: none;
           border-radius: 6px;
           color: #000;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 14px;
           font-weight: bold;
           cursor: pointer;
-        ">Submit</button>
+          transition: all 0.2s;
+          box-shadow: 0 2px 10px rgba(0,255,136,0.3);
+        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 15px rgba(0,255,136,0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 10px rgba(0,255,136,0.3)'">✨ Submit Report</button>
       </div>
     </div>
   `;
   
-  // Add modal backdrop
+  // Add modal backdrop with higher z-index
   const backdrop = document.createElement('div');
   backdrop.style.cssText = `
     position: fixed;
@@ -244,10 +271,23 @@ function showReportModal() {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0,0,0,0.7);
-    z-index: 10000;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(4px);
+    z-index: 999998;
+    animation: fadeIn 0.2s ease;
   `;
   backdrop.onclick = closeReportModal;
+  
+  // Add animation keyframes
+  if (!document.getElementById('modal-styles')) {
+    const style = document.createElement('style');
+    style.id = 'modal-styles';
+    style.textContent = `
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes slideDown { from { transform: translate(-50%, -60%); opacity: 0; } to { transform: translate(-50%, -50%); opacity: 1; } }
+    `;
+    document.head.appendChild(style);
+  }
   
   document.body.appendChild(backdrop);
   document.body.appendChild(modal);
@@ -308,19 +348,44 @@ function showNotification(message, type = 'info') {
     position: fixed;
     top: 20px;
     left: 50%;
-    transform: translateX(-50%);
-    background: ${type === 'success' ? '#00ff88' : type === 'error' ? '#ff4444' : '#0088ff'};
+    transform: translateX(-50%) translateY(-20px);
+    background: ${type === 'success' ? 'linear-gradient(135deg, #00ff88 0%, #00cc6a 100%)' : type === 'error' ? 'linear-gradient(135deg, #ff4444 0%, #cc0000 100%)' : 'linear-gradient(135deg, #0088ff 0%, #0066cc 100%)'};
     color: ${type === 'success' ? '#000' : '#fff'};
-    padding: 12px 24px;
+    padding: 14px 28px;
     border-radius: 8px;
     font-weight: bold;
-    z-index: 10001;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    animation: slideDown 0.3s ease;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    z-index: 1000000;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 30px ${type === 'success' ? 'rgba(0,255,136,0.4)' : type === 'error' ? 'rgba(255,68,68,0.4)' : 'rgba(0,136,255,0.4)'};
+    animation: slideDownToast 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 280px;
+    justify-content: center;
   `;
-  toast.textContent = message;
+  
+  const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+  toast.innerHTML = `<span style="font-size: 18px;">${icon}</span> <span>${message}</span>`;
+  
   document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
+  
+  // Add animation
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideDownToast {
+      to {
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+  `;
+  document.head.appendChild(style);
+  
+  setTimeout(() => {
+    toast.style.animation = 'fadeIn 0.3s ease reverse forwards';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
 }
 
 // Load user-reported alerts from API
@@ -346,37 +411,79 @@ function showAlertOnMap(alert) {
     icon: L.divIcon({
       className: 'user-alert-marker',
       html: `<div style="
-        font-size: 24px;
-        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+        font-size: 28px;
+        filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+        transition: transform 0.2s;
+        animation: bounceIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
       ">${iconConfig.emoji}</div>`,
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
+      iconSize: [36, 36],
+      iconAnchor: [18, 18]
     })
   }).addTo(userAlertsLayer);
   
   marker.bindPopup(`
-    <div style="min-width: 150px;">
-      <strong style="color: ${iconConfig.color};">${iconConfig.emoji} ${iconConfig.label}</strong><br>
-      ${alert.description || ''}<br>
-      <small style="color: #888;">${new Date(alert.reportedAt).toLocaleTimeString()}</small><br>
-      <div style="margin-top: 8px;">
-        <button onclick="upvoteAlert('${alert.id}')" style="
-          background: #00ff88;
-          border: none;
-          padding: 4px 8px;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 12px;
-        ">👍 ${alert.upvotes || 0}</button>
-        <button onclick="downvoteAlert('${alert.id}')" style="
-          background: #ff4444;
-          border: none;
-          padding: 4px 8px;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 12px;
-          margin-left: 4px;
-        ">👎 ${alert.downvotes || 0}</button>
+    <div style="
+      min-width: 180px;
+      font-family: 'JetBrains Mono', monospace;
+      background: #1a1a1a;
+      color: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+    ">
+      <div style="
+        background: ${iconConfig.color};
+        color: #000;
+        padding: 10px 12px;
+        font-weight: bold;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      ">
+        <span style="font-size: 18px;">${iconConfig.emoji}</span>
+        ${iconConfig.label}
+      </div>
+      <div style="padding: 12px;">
+        <div style="color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">Description</div>
+        <div style="margin-bottom: 12px; color: #fff; font-size: 13px;">${alert.description || 'No description'}</div>
+        <div style="color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">Reported</div>
+        <div style="color: #fff; font-size: 13px; margin-bottom: 12px;">${new Date(alert.reportedAt).toLocaleString()}</div>
+        <div style="color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">Community Score</div>
+        <div style="font-size: 16px; font-weight: bold; color: ${iconConfig.color}; margin-bottom: 12px;">
+          ${Math.round(alert.getScore())} pts
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button onclick="upvoteAlert('${alert.id}')" style="
+            flex: 1;
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            color: #000;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(0,255,136,0.3);
+          " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,255,136,0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,255,136,0.3)'">
+            👍 <span id="upvote-${alert.id}">${alert.upvotes || 0}</span>
+          </button>
+          <button onclick="downvoteAlert('${alert.id}')" style="
+            flex: 1;
+            background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            color: #fff;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(255,68,68,0.3);
+          " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(255,68,68,0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(255,68,68,0.3)'">
+            👎 <span id="downvote-${alert.id}">${alert.downvotes || 0}</span>
+          </button>
+        </div>
       </div>
     </div>
   `);
@@ -518,21 +625,68 @@ function startLiveTracking() {
   let position = [40.7128, -74.0060]; // Start in NYC
   let heading = 45; // Northeast
   
+  // Add driver avatar
+  const driverAvatar = L.divIcon({
+    className: 'driver-avatar',
+    html: `<div style="
+      font-size: 32px;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+      animation: drive 0.5s ease infinite alternate;
+    ">🚗</div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20]
+  });
+  
+  const driverMarker = L.marker(position, { icon: driverAvatar }).addTo(driverAvatarsLayer);
+  driverMarker.bindPopup('<b style="color: #00ff88;">Vehicle Alpha</b><br>🚗 Online<br>⚡ 78% Battery');
+  
+  let updateCount = 0;
+  
   setInterval(() => {
     // Simulate movement
-    const speed = 0.001; // ~100m per second
-    heading += (Math.random() - 0.5) * 20; // Random turn +/- 10 degrees
+    const speed = 0.0008; // ~80m per second
+    heading += (Math.random() - 0.5) * 15; // Random turn
     
     position[0] += speed * Math.cos(heading * Math.PI / 180);
     position[1] += speed * Math.sin(heading * Math.PI / 180);
     
-    // Update device marker (you'd replace this with actual device tracking)
-    // For now, just log the position
-    console.log('Live position:', position);
+    // Update marker position
+    driverMarker.setLatLng(position);
     
-    // WebSocket would broadcast this in production
-    // webSocket.send(JSON.stringify({ type: 'location', lat: position[0], lng: position[1] }));
+    // Update popup content
+    driverMarker.setPopupContent(`<b style="color: #00ff88;">Vehicle Alpha</b><br>🚗 Online<br>⚡ 78% Battery<br>📍 ${position[0].toFixed(4)}, ${position[1].toFixed(4)}`);
+    
+    updateCount++;
+    if (updateCount % 10 === 0) {
+      console.log('Live position update:', position);
+    }
   }, 1000);
+  
+  // Add more driver avatars for demo
+  const otherDrivers = [
+    { lat: 40.72, lng: -74.01, emoji: '🚙', name: 'Drone Beta' },
+    { lat: 40.70, lng: -73.99, emoji: '🛵', name: 'Tracker Gamma' },
+    { lat: 40.73, lng: -74.02, emoji: '🚚', name: 'Fleet Alpha-7' }
+  ];
+  
+  otherDrivers.forEach(driver => {
+    const avatar = L.divIcon({
+      className: 'driver-avatar',
+      html: `<div style="
+        font-size: 28px;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+      ">${driver.emoji}</div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18]
+    });
+    
+    const marker = L.marker([driver.lat, driver.lng], { icon: avatar })
+      .addTo(driverAvatarsLayer);
+    
+    marker.bindPopup(`<b style="color: #ffaa00;">${driver.name}</b><br>${driver.emoji} Active`);
+  });
+  
+  console.log('Live tracking started with driver avatars');
 }
 
 // Run when DOM is ready
